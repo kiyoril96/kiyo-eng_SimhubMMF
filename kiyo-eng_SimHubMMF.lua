@@ -1,20 +1,51 @@
 require('src/MMFHeader')
 
-local touchMode = {'Unchanged','LeftRight','Advanced'}
-local nodes = {'COCKPIT_HR','STEER_HR'}
-local posOffset = {vec3(0.1,0.7,0.3),vec3(0,0,-0.1)}
-local angles = {vec3(0,0,0),vec3(0,0,0)}
-local orientation = { 
-    vec3(0,0,1):rotate(quat.fromAngleAxis(angles[1].x,vec3(1,0,0))):rotate(quat.fromAngleAxis(angles[1].y,vec3(0,1,0))):rotate(quat.fromAngleAxis(angles[1].z,vec3(0,0,1)))
-    ,vec3(0,0,1):rotate(quat.fromAngleAxis(angles[2].x,vec3(1,0,0))):rotate(quat.fromAngleAxis(angles[2].y,vec3(0,1,0))):rotate(quat.fromAngleAxis(angles[2].z,vec3(0,0,1)))}
-local up = vec3(0,1,0)
+local defaultConfigPath =  ac.getFolder(ac.FolderID.ScriptOrigin) .. '/config/default.ini'
+local nodes = {}
+local angle
+local flip = false
+local invert = false
+local pos
+local look
+local orientation = {}
+local Ref = ac.emptySceneReference()
+local DDURef = ac.emptySceneReference()
+local appInit = false
+local carId 
+local configDir = ac.getFolder(ac.FolderID.ScriptConfig)
+local configPath
+local config
+function Initialize()
 
-vec3(0,0,1):rotate(quat.fromAngleAxis(10,vec3(1,0,0)))
-local Ref = ac.findNodes('carsRoot:yes')
-local DDURef = Ref:findNodes(nodes[1]):createNode('DDU',false):loadKN5('./VirtualDDU.kn5')
-DDURef:setPosition(posOffset[1])
-    :setOrientation(orientation[1]:normalize(),vec3(0,1,0):normalize())
+    carId = ac.getCarID(0)
+    configPath = configDir .. '/' .. carId .. '.ini'
 
+    if not io.dirExists(configDir) then
+        io.createDir(configDir)
+    end
+    if not io.fileExists(configPath) then 
+        local defaultConfig =  ac.INIConfig.load(defaultConfigPath,ac.INIFormat.Extended)
+        defaultConfig:save(configPath)
+    end
+
+
+    config = ac.INIConfig.load(configPath,ac.INIFormat.Extended)
+    for index, section in config:iterate('POS') do
+        if section ~= 'GENERAL' then
+            nodes[index] = config:get(section,'Node','COCKPIT_HR')
+        end
+    end
+    ac.debug('nodes',nodes)
+    angle = config:get('POS_0','Rotation',vec3(0,0,0))
+    flip = config:get('POS_0','Flip',false)
+    invert = config:get('POS_0','Invert',false)
+    pos = config:get('POS_0','Position',vec3(0,0,0))
+    look = vec3(0,0,(flip and -1 or 1)):rotate(quat.fromAngleAxis(angle.x,vec3(1,0,0))):rotate(quat.fromAngleAxis(angle.y,vec3(0,1,0))):rotate(quat.fromAngleAxis(angle.z,vec3(0,0,1)))
+    Ref = ac.findNodes('carsRoot:yes')
+    DDURef = Ref:findNodes('COCKPIT_HR'):createNode('DDU',false):loadKN5('./model/DDU_4inch/VirtualDDU.kn5')
+    DDURef:setPosition(pos):setOrientation(look,vec3(0,(invert and -1 or 1),0))
+    appInit = true
+end
 
 local deviceFamilyId = '8d297eae-fc40-4229-943c-0eba7402673c'
 local deviceIndexMMFName = 'SimHubDashIndexV3' .. deviceFamilyId
@@ -274,44 +305,48 @@ local isRendering = false
 
 function SimUpdate()
 
-    if not isRendering then
+    if not appInit then
+        Initialize()
+    end
+
+    if appInit and not isRendering then
         isRendering= StartDevice()
         isRendering = StartRender()
     end
 
-    if isRendering then 
+    if appInit and isRendering then 
         UpdateDisplay()
         UpdateLeds()
 
-        local targetMeshes = DDURef:findMeshes('Display')
-        local ref = ac.emptySceneReference()
-        local clickPos = vec3()
-        local nomal = vec3()
-        local uv = vec2()
-        local sim = ac.getSim() 
-        if sim.isWindowForeground
-            and sim.cameraPosition:closerToThan(DDURef:getWorldTransformationRaw().position ,2)
-            and ui.mouseClicked(ui.MouseButton.Left)
-            and not ac.getUI().wantCaptureMouse
-            and (targetMeshes:raycast(render.createMouseRay(), ref,clickPos,nomal,uv,0) ~= -1 )  then
-            UpdateteTouchPoint(vec2(uv.x,uv.y+1),true)
-        end
-        if mappedDashRender.Cursor4.CursorPressed and ui.mouseReleased(ui.MouseButton.Left) then
-            UpdateteTouchPoint(vec2(uv.x,uv.y+1),false)
-        end
+        if DDURef then 
+            local targetMeshes = DDURef:findMeshes('Display')
+            local ref = ac.emptySceneReference()
+            local clickPos = vec3()
+            local nomal = vec3()
+            local uv = vec2()
+            local sim = ac.getSim() 
+            if sim.isWindowForeground
+                and sim.cameraPosition:closerToThan(DDURef:getWorldTransformationRaw().position ,2)
+                and ui.mouseClicked(ui.MouseButton.Left)
+                and not ac.getUI().wantCaptureMouse
+                and (targetMeshes:raycast(render.createMouseRay(), ref,clickPos,nomal,uv,0) ~= -1 )  then
+                UpdateteTouchPoint(vec2(uv.x,uv.y+1),true)
+            end
+            if mappedDashRender.Cursor4.CursorPressed and ui.mouseReleased(ui.MouseButton.Left) then
+                UpdateteTouchPoint(vec2(uv.x,uv.y+1),false)
+            end
 
-        ac.debug('pressed',mappedDashRender.Cursor4.CursorPressed)
-        ac.debug('point',uv)
-        ac.debug('pointX',mappedDashRender.Cursor4.CursorCoordinatesX)
-        ac.debug('pointY',mappedDashRender.Cursor4.CursorCoordinatesY)
+            ac.debug('pressed',mappedDashRender.Cursor4.CursorPressed)
+            ac.debug('point',uv)
+            ac.debug('pointX',mappedDashRender.Cursor4.CursorCoordinatesX)
+            ac.debug('pointY',mappedDashRender.Cursor4.CursorCoordinatesY)
+        end
     end
 
 end
 
 local attachto =1
 local touchModeIndex = 1
-local flip = false
-local invert = false
 function WindowMain()
     
     if isRendering then
@@ -378,75 +413,86 @@ function WindowMain()
     local attach, changed = ui.combo("##attachNode",attachto,ui.ComboFlags.HeightLargest,nodes)
     if changed then
         attachto = attach
+        config:setAndSave('GENERAL','AttachTo',attach)
         if DDURef then DDURef:dispose() end
-        DDURef = Ref:findNodes(nodes[attachto]):createNode('DDU',false):loadKN5('./VirtualDDU.kn5')
-        DDURef:setPosition(posOffset[attachto]):setOrientation(orientation[attachto]:normalize(),vec3(0,1,0):normalize())
+
+        DDURef = Ref:findNodes(config:get('POS_'..attachto-1,'Node','COCKPIT_HR')):createNode('DDU',false):loadKN5('./model/DDU_4inch/VirtualDDU.kn5')
+
+        angle = config:get('POS_'..attachto-1,'Rotation',vec3(0,0,0))
+        flip = config:get('POS_'..attachto-1,'Flip',false)
+        invert = config:get('POS_'..attachto-1,'Invert',false)
+        pos = config:get('POS_'..attachto-1,'Position',vec3(0,0,0))
+        look = vec3(0,0,(flip and -1 or 1))
+            :rotate(quat.fromAngleAxis(math.rad(angle.x),vec3(1,0,0)))
+            :rotate(quat.fromAngleAxis(math.rad(angle.y),vec3(0,1,0)))
+        Ref = ac.findNodes('carsRoot:yes')
+        DDURef:setPosition(pos):setOrientation(look,vec3(0,(invert and -1 or 1),0):rotate(quat.fromAngleAxis(math.rad(angle.z),vec3(0,0,1))))
     end
 
     ui.text('X:')
     ui.sameLine()
     ui.setNextItemWidth(200)
-    local val,changedx = ui.slider('##posX',posOffset[attachto].x,-2,2,'%.04f')
+    local valx,changedx = ui.slider('##posX',pos.x,-2,2,'%.04f')
     if changedx then 
-        posOffset[attachto].x = val
+        pos.x = valx
     end
     if ui.itemClicked(ui.MouseButton.Right,false) then 
         changedx =true
-        posOffset[attachto].x = 0
+        pos.x = 0
     end
     ui.sameLine()
     ui.setNextItemWidth(100)
-    local val,changedrx = ui.slider('##rotX',angles[attachto].x,-90,90,'%.01f')
+    local valrx,changedrx = ui.slider('##rotX',angle.x,-90,90,'%.01f')
     if changedrx then 
-        angles[attachto].x = val
+        angle.x = valrx
     end
     if ui.itemClicked(ui.MouseButton.Right,false) then 
         changedrx =true
-        angles[attachto].x = 0
+        angle.x = 0
     end
  
     ui.text('Y:')
     ui.sameLine()
     ui.setNextItemWidth(200)
-    local val,changedy = ui.slider('##posY',posOffset[attachto].y,-2,2,'%.04f')
+    local valy,changedy = ui.slider('##posY',pos.y,-2,2,'%.04f')
     if changedy then 
-        posOffset[attachto].y = val
+        pos.y = valy
     end
     if ui.itemClicked(ui.MouseButton.Right,false) then 
         changedy =true
-        posOffset[attachto].y = 0
+        pos.y = 0
     end
     ui.sameLine()
     ui.setNextItemWidth(100)
-    local val,changedry = ui.slider('##rotY',angles[attachto].y,-90,90,'%.01f')
+    local valry,changedry = ui.slider('##rotY',angle.y,-90,90,'%.01f')
     if changedry then 
-        angles[attachto].y = val
+        angle.y = valry
     end
     if ui.itemClicked(ui.MouseButton.Right,false) then 
         changedry =true
-        angles[attachto].y = 0
+        angle.y = 0
     end
 
     ui.text('Z:')
     ui.sameLine()
     ui.setNextItemWidth(200)
-    local val,changedz = ui.slider('##posZ',posOffset[attachto].z,-2,2,'%.04f')
+    local valz,changedz = ui.slider('##posZ',pos.z,-2,2,'%.04f')
     if changedz then 
-        posOffset[attachto].z = val
+        pos.z = valz
     end
     if ui.itemClicked(ui.MouseButton.Right,false) then 
         changedz =true
-        posOffset[attachto].z = 0
+        pos.z = 0
     end
     ui.sameLine()
     ui.setNextItemWidth(100)
-    local val,changedrz = ui.slider('##rotZ',angles[attachto].z,-90,90,'%.01f')
+    local valrz,changedrz = ui.slider('##rotZ',angle.z,-90,90,'%.01f')
     if changedrz then 
-        angles[attachto].z = val
+        angle.z = valrz
     end
     if ui.itemClicked(ui.MouseButton.Right,false) then 
         changedrz =true
-        angles[attachto].z = 0
+        angle.z = 0
     end
 
 
@@ -464,12 +510,24 @@ function WindowMain()
 
 
     if changedx or changedy or changedz then
-        DDURef:setPosition(posOffset[attachto])
+        DDURef:setPosition(pos)
+        config:set('POS_'..attachto-1,'Position',pos)
+        config:save()
     end
-    if changedrx or changedry or changedrz or changeflip or changeInvert then 
-        orientation[attachto] 
-            = vec3(0,0,(flip and -1 or 1)):rotate(quat.fromAngleAxis(math.rad(angles[attachto].x),vec3(1,0,0)))
-                :rotate(quat.fromAngleAxis(math.rad(angles[attachto].y),vec3(0,1,0)))
-        DDURef:setOrientation(orientation[attachto],vec3(0,(invert and -1 or 1),0):rotate(quat.fromAngleAxis(math.rad(angles[attachto].z),vec3(0,0,1))) )
+    if changedrx or changedry or changedrz or changeflip or changeInvert then
+
+        look = vec3(0,0,(flip and -1 or 1))
+            :rotate(quat.fromAngleAxis(math.rad(angle.x),vec3(1,0,0)))
+            :rotate(quat.fromAngleAxis(math.rad(angle.y),vec3(0,1,0)))
+
+        DDURef:setOrientation(look,vec3(0,(invert and -1 or 1),0):rotate(quat.fromAngleAxis(math.rad(angle.z),vec3(0,0,1))) )
+
+        config:set('POS_'..attachto-1,'Rotation',angle)
+        config:set('POS_'..attachto-1,'Flip',flip)
+        config:set('POS_'..attachto-1,'Invert',invert)
+        config:save()
     end
+
+    ac.debug('attachto',attachto)
+    ac.debug('ddu',DDURef)
 end
