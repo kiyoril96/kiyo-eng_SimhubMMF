@@ -26,13 +26,13 @@ function Display:update(device)
         return
     end
 
-    local buf = ffi.string( (selectedBuffer == 1) 
-        and device.mmf.DisplayRenderBuffer1.Buffer 
-        or device.mmf.DisplayRenderBuffer2.Buffer 
-    , device.mmf.DisplayRenderedDataSize)
-
     if device.frameTexture and device.displayCanvas then
-        device.frameTexture:push( buf )
+        device.frameTexture:push( 
+            ffi.string( (selectedBuffer == 1) 
+                and device.mmf.DisplayRenderBuffer1.Buffer 
+                or device.mmf.DisplayRenderBuffer2.Buffer 
+                , device.mmf.DisplayRenderedDataSize)
+            )
         device.displayCanvas:updateWithShader({
             textures = {txInput = device.frameTexture},
             shader = [[
@@ -45,6 +45,7 @@ function Display:update(device)
         device.mmf.ReadCount = device.mmf.ReadCount + 1
         device.wasDisplayFilled = true -- レンダリングの状況確認用
     end
+    ac.debug(device.id..' Display Write Count',device.mmf.DisplayWriteCount)
 end
 
 return Display

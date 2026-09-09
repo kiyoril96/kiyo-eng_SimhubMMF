@@ -11,9 +11,23 @@ local function notifyRequest()
     })
 end
 
+---@class Device
+---@field index integer
+---@field id string
+---@field width integer
+---@field height integer
+---@field identifier1 integer
+---@field identifier2 integer
+---@field mmfName string --Render MMF の名前 
+---@field mmf table --Render MMF 本体 MMFHeaderV3 を参照
+---@field frameTexture ui.GIFPlayer --MMFからデータを流し込む RGBフォーマットがそろわないので要変換
+---@field displayCanvas ui.ExtraCanvas -- Simhubダッシュボードのテクスチャ 色変換済み
+---@field ledColors rgbm[]
+---@field touchMode MMF.TouchMode
+---@field touchTraces boolean
+---@field requestId integer -- アクションコマンドを送信するときのID
 local Device = {}
 
----@class Device
 ---@param DeviceID string
 ---@param width integer
 ---@param height integer
@@ -48,7 +62,8 @@ function Device:start()
     end
 
     if not self.mmf then
-        self.mmf = ac.writeMemoryMappedFile(self.mmfName, MMF.Header, true)
+        local mmf = ac.writeMemoryMappedFile(self.mmfName, MMF.Header, true)
+        self.mmf = mmf.device
         self.mmf.StructVersion = 3
         self.mmf.RequestedRenderHeightPixels = self.height
         self.mmf.RequestedRenderWidthPixels = self.width
@@ -75,8 +90,8 @@ function Device:stop()
     end
 end
 
----@param ignourLed boolean
----@param ignourDisplay boolean
+---@param ignourLed? boolean
+---@param ignourDisplay? boolean
 function Device:update(ignourLed,ignourDisplay)
     if not ignourLed then
         self:updateLeds()
@@ -86,6 +101,27 @@ function Device:update(ignourLed,ignourDisplay)
     end
     if self.mmf then
         self.mmf.ReadCount = self.mmf.ReadCount + 1
+    end
+end
+
+---@param size? vec2
+function Device:setTexture(size)
+    if size then 
+        self.width = size.x
+        self.height = size.y
+    end
+
+    local newSize = nil
+    if self.width ~= 0 or self.height ~= 0 then newSize = vec2(self.width,self.height) end
+
+    if self.displayCanvas or not newSize then self.displayCanvas:dispose() end
+    if self.frameTexture or not newSize then self.frameTexture = nil end
+
+    if newSize then
+        self.frameTexture = ui.GIFPlayer({width = newSize.x, height = newSize.y})
+        self.frameTexture.keepRunning = true
+        self.displayCanvas = ui.ExtraCanvas(newSize,1,render.TextureFormat.R8G8B8A8.UNorm)
+        self.displayCanvas:setName(self.id..'canvas')
     end
 end
 

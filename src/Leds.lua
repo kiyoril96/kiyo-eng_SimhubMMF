@@ -37,7 +37,7 @@ function Leds:update(device)
 
     device.mmf.ReadCount = device.mmf.ReadCount + 1
 
-    ac.debug('colors',device.ledColors)
+    ac.debug(device.id..' colors',device.ledColors)
 end
 
 return Leds
