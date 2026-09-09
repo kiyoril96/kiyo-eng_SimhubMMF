@@ -3,8 +3,8 @@ require('src/MMFHeader')
 ac.setLogSilent(true)
 
 local defaultConfigPath =  ac.getFolder(ac.FolderID.ScriptOrigin) .. '/config/default.ini'
---local model = './model/DDU_4inch/VirtualDDU.kn5'
-local model = './model/tablet/tablet.kn5'
+local model = './model/DDU_4inch/VirtualDDU.kn5'
+--local model = './model/tablet/tablet.kn5'
 local nodes = {}
 local angle
 local flip = false
