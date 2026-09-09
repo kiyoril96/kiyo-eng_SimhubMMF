@@ -1,13 +1,16 @@
 require('src/MMFHeader')
 
+ac.setLogSilent(true)
+
 local defaultConfigPath =  ac.getFolder(ac.FolderID.ScriptOrigin) .. '/config/default.ini'
+--local model = './model/DDU_4inch/VirtualDDU.kn5'
+local model = './model/tablet/tablet.kn5'
 local nodes = {}
 local angle
 local flip = false
 local invert = false
 local pos
 local look
-local orientation = {}
 local Ref = ac.emptySceneReference()
 local DDURef = ac.emptySceneReference()
 local appInit = false
@@ -15,6 +18,23 @@ local carId
 local configDir = ac.getFolder(ac.FolderID.ScriptConfig)
 local configPath
 local config
+
+local attachto =1
+
+function LoadModel()
+    DDURef = Ref:findNodes(config:get('POS_'..attachto-1,'Node','COCKPIT_HR')):createNode('DDU',false):loadKN5(model)
+
+    angle = config:get('POS_'..attachto-1,'Rotation',vec3(0,0,0))
+    flip = config:get('POS_'..attachto-1,'Flip',false)
+    invert = config:get('POS_'..attachto-1,'Invert',false)
+    pos = config:get('POS_'..attachto-1,'Position',vec3(0,0,0))
+    look = vec3(0,0,(flip and -1 or 1))
+        :rotate(quat.fromAngleAxis(math.rad(angle.x),vec3(1,0,0)))
+        :rotate(quat.fromAngleAxis(math.rad(angle.y),vec3(0,1,0)))
+    Ref = ac.findNodes('carsRoot:yes')
+    DDURef:setPosition(pos):setOrientation(look,vec3(0,(invert and -1 or 1),0):rotate(quat.fromAngleAxis(math.rad(angle.z),vec3(0,0,1))))
+end
+
 function Initialize()
 
     carId = ac.getCarID(0)
@@ -36,24 +56,18 @@ function Initialize()
         end
     end
     ac.debug('nodes',nodes)
-    angle = config:get('POS_0','Rotation',vec3(0,0,0))
-    flip = config:get('POS_0','Flip',false)
-    invert = config:get('POS_0','Invert',false)
-    pos = config:get('POS_0','Position',vec3(0,0,0))
-    look = vec3(0,0,(flip and -1 or 1)):rotate(quat.fromAngleAxis(angle.x,vec3(1,0,0))):rotate(quat.fromAngleAxis(angle.y,vec3(0,1,0))):rotate(quat.fromAngleAxis(angle.z,vec3(0,0,1)))
-    Ref = ac.findNodes('carsRoot:yes')
-    DDURef = Ref:findNodes('COCKPIT_HR'):createNode('DDU',false):loadKN5('./model/DDU_4inch/VirtualDDU.kn5')
-    DDURef:setPosition(pos):setOrientation(look,vec3(0,(invert and -1 or 1),0))
+
+    Ref = ac.findNodes('carsRoot:yes')    
+    attachto = config:get('GENERAL','AttachTo',1)
+    LoadModel()
+
     appInit = true
 end
-
 local deviceFamilyId = '8d297eae-fc40-4229-943c-0eba7402673c'
 local deviceIndexMMFName = 'SimHubDashIndexV3' .. deviceFamilyId
 
 local dashRenderMMFName = ''
 
-local connectionStatus
-local lastError = nil
 ---@class ui.GIFPlayer
 local frameTexture
 ---@class ui.ExtraCanvas
@@ -65,10 +79,9 @@ local mappedDashRender = nil
 local width = 320
 local height = 180
 
-local lastFrame = -1
-
 local DisplayConnected
 
+-- 上手く発行されていない気がする
 local function notifyRequest()
     local command = "$event = New-Object System.Threading.EventWaitHandle($false, [System.Threading.EventResetMode]::ManualReset, 'Global\\SHMMFNotification'); $event.Set(); $event.Dispose()"
     os.runConsoleProcess({
@@ -85,24 +98,24 @@ function StartDevice()
         mappedDashRender.RequestActive = false
         ac.disposeMemoryMappedFile(mappedDashRender) end
     if mappedDeviceIndex then 
-        mappedDeviceIndex.AvailableDevice01.Available=false
+        mappedDeviceIndex.Device[0].Available=false
         ac.disposeMemoryMappedFile(mappedDeviceIndex) end
 
 
-    local mappedDevice = ac.writeMemoryMappedFile( deviceIndexMMFName, MMFDeviceIndex, true)
+    local mappedDevice = ac.writeMemoryMappedFile( deviceIndexMMFName, MMF.DeviceIndex, true)
 
-    mappedDeviceIndex = mappedDevice
+    mappedDeviceIndex = mappedDevice.deviceIndex
     ac.debug('Index mmf name',deviceIndexMMFName)
 
     local identifier1 = math.random(1,2147483646)
     local identifier2 = math.random(1,2147483646)
     dashRenderMMFName = 'SimHubDashRenderV3' .. deviceFamilyId .. '_' .. identifier1 .. '_' ..identifier2
 
-    mappedDeviceIndex.AvailableDevice01.DeviceID= {('KE-VirtualDisplay#01'):byte(1,-1)}
-    mappedDeviceIndex.AvailableDevice01.MMFIdentifier1=identifier1
-    mappedDeviceIndex.AvailableDevice01.MMFIdentifier2=identifier2
-    mappedDeviceIndex.AvailableDevice01.DeviceInfo= {('test virtual display'):byte(1,-1)}
-    mappedDeviceIndex.AvailableDevice01.Available=true
+    mappedDeviceIndex.Device[0].DeviceID= {('KE-VirtualDisplay#01'):byte(1,-1)}
+    mappedDeviceIndex.Device[0].MMFIdentifier1=identifier1
+    mappedDeviceIndex.Device[0].MMFIdentifier2=identifier2
+    mappedDeviceIndex.Device[0].DeviceInfo= {('test virtual display'):byte(1,-1)}
+    mappedDeviceIndex.Device[0].Available=true
 
     return true
 end
@@ -111,9 +124,9 @@ local read = 0
 function StartRender()
     read =0
     ac.debug('Dash mmf name',dashRenderMMFName)
-    local DashRender = ac.writeMemoryMappedFile(dashRenderMMFName, MMFHeaderV3, true)
+    local DashRender = ac.writeMemoryMappedFile(dashRenderMMFName, MMF.Header, true)
 
-    mappedDashRender = DashRender.mmfHeaderV3
+    mappedDashRender = DashRender.device
     mappedDashRender.StructVersion = 3
     mappedDashRender.RequestedRenderHeightPixels = height
     mappedDashRender.RequestedRenderWidthPixels = width
@@ -121,7 +134,7 @@ function StartRender()
     mappedDashRender.EnableTouchTraces = false
     mappedDashRender.ReadTimeout = 2;
     mappedDashRender.Requester = {('Assettocrosa Lua App'):byte(1,-1)}
-    mappedDashRender.RequestedTouchMode = MMFHeader.TouchMode.Unchanged
+    mappedDashRender.RequestedTouchMode = MMF.TouchMode.Unchanged
     mappedDashRender.RequestActive = true
 
     notifyRequest()
@@ -133,8 +146,6 @@ function StartRender()
 
     displayCanvas = ui.ExtraCanvas(vec2(width, height), 1, render.TextureFormat.R8G8B8A8.UNorm)
     displayCanvas:setName('test')
-    connectionStatus = true
-    lastError = nil
     return true
 end
 
@@ -152,7 +163,7 @@ function UpdateteTouchPoint(point,pressed)
 end
 
 local requestId = 0
----@param Action MMFHeader.Action
+---@param Action MMF.Action
 function EnqueAcction(Action)
     if mappedDashRender ~= nil and mappedDashRender.SimHubConnected then
         local command = {
@@ -178,7 +189,6 @@ local syncFailures = 0
 
 local lastLedsWriteCount = -1
 local LedsConnected =false
-local lastLedsWrite 
 local ledColors = {}
 local ledsBrightness = 0
 function UpdateLeds()
@@ -199,8 +209,8 @@ function UpdateLeds()
 
     LedsConnected = true
     lastLedsWriteCount = curWriteCount
-    lastLedsWrite = os.time()
 
+    -- ダブルバッファ Simhub側で書き込み完了しているバッファを見る
     local selectedBuffer = mappedDashRender.LedsLastFilledBuffer
     local ledsCount = mappedDashRender.WrittenLedsCount
 
@@ -213,8 +223,9 @@ function UpdateLeds()
         and mappedDashRender.LedsRenderBuffer1.Buffer
         or mappedDashRender.LedsRenderBuffer2.Buffer
 
-    for i = 0,ledsCount -1 do
-        ledColors[i+1] = rgbm.from0255(buf[i*3+0],buf[i*3+1],buf[i*3+2],1)
+    ledColors = {}
+    for i = 1,ledsCount do
+        ledColors[i] = rgbm.from0255(buf[i*3+0],buf[i*3+1],buf[i*3+2],1)
     end
     read = read+1
     mappedDashRender.ReadCount = read
@@ -233,7 +244,6 @@ end
 
 
 local lastDisplayWriteCount = -1
-local lastDisplayWrite = -1
 local wasDisplayFilled = false
 local displayBrightness = 0
 local clicked =false
@@ -255,8 +265,8 @@ function UpdateDisplay()
 
     DisplayConnected = true
     lastDisplayWriteCount = curWriteCount
-    lastDisplayWrite = os.time()
 
+    -- ダブルバッファ 書き込み完了しているバッファを見る
     local selectedBuffer = mappedDashRender.DisplayLastFilledBuffer
 
     if mappedDashRender.DisplayBufferCurrentlyWritten == selectedBuffer then
@@ -291,16 +301,13 @@ function UpdateDisplay()
         read = read+1
         mappedDashRender.ReadCount = read
         wasDisplayFilled = true -- レンダリングの状況確認用
-        lastDisplayWrite = os.time() -- レンダリングの状況確認用
 
         DDURef:findMeshes('Display'):ensureUniqueMaterials()
             :setMaterialTexture("txDiffuse",displayCanvas)
             :setMaterialProperty("ksEmissive",vec3(displayBrightness,displayBrightness,displayBrightness))
     end
-    return
 end
 
-local isDeviceSet = false
 local isRendering = false
 
 function SimUpdate()
@@ -317,7 +324,7 @@ function SimUpdate()
     if appInit and isRendering then 
         UpdateDisplay()
         UpdateLeds()
-
+    
         if DDURef then 
             local targetMeshes = DDURef:findMeshes('Display')
             local ref = ac.emptySceneReference()
@@ -345,8 +352,6 @@ function SimUpdate()
 
 end
 
-local attachto =1
-local touchModeIndex = 1
 function WindowMain()
     
     if isRendering then
@@ -358,13 +363,6 @@ function WindowMain()
             local p1 = vec2( (offset*i) -5 , height )
             ui.drawCircleFilled(p1,ledSize,ledColors[i],20)
             ui.drawCircle(p1,ledSize,rgbm(0,0,0,1),20,1)
-            DDURef:findMeshes('LED.'..string.format( "%03d", i ))
-                :ensureUniqueMaterials():setMaterialTexture("txDiffuse",rgbm(0.2,0.2,0.2,0))
-                :setMaterialProperty("ksEmissive",vec3(
-                    ledColors[i].r*1000
-                    ,ledColors[i].g*1000
-                    ,ledColors[i].b*1000
-                ))
         end
 
         if displayCanvas then 
@@ -395,38 +393,30 @@ function WindowMain()
 
     end
 
-    if ui.button('<##prev',vec2(20,20),ui.ButtonFlags.PressedOnClickRelease) then EnqueAcction(MMFHeader.Action.PreviousScreen) end
+    if ui.button('<##prev',vec2(20,20),ui.ButtonFlags.PressedOnClickRelease) then EnqueAcction(MMF.Action.PreviousScreen) end
     ui.sameLine()
-    if ui.button('F##First',vec2(20,20),ui.ButtonFlags.PressedOnClickRelease) then EnqueAcction(MMFHeader.Action.FirstScreen) end
+    if ui.button('F##First',vec2(20,20),ui.ButtonFlags.PressedOnClickRelease) then EnqueAcction(MMF.Action.FirstScreen) end
     ui.sameLine()
-    if ui.button('>##next',vec2(20,20),ui.ButtonFlags.PressedOnClickRelease) then EnqueAcction(MMFHeader.Action.NextScreen) end
+    if ui.button('>##next',vec2(20,20),ui.ButtonFlags.PressedOnClickRelease) then EnqueAcction(MMF.Action.NextScreen) end
     ui.sameLine()
-    if ui.button('A##A',vec2(20,20),ui.ButtonFlags.PressedOnClickRelease) then EnqueAcction(MMFHeader.Action.ActionA) end
+    if ui.button('A##A',vec2(20,20),ui.ButtonFlags.PressedOnClickRelease) then EnqueAcction(MMF.Action.ActionA) end
     ui.sameLine()
-    if ui.button('B##B',vec2(20,20),ui.ButtonFlags.PressedOnClickRelease) then EnqueAcction(MMFHeader.Action.ActionB) end
+    if ui.button('B##B',vec2(20,20),ui.ButtonFlags.PressedOnClickRelease) then EnqueAcction(MMF.Action.ActionB) end
     ui.sameLine()
-    if ui.button('C##C',vec2(20,20),ui.ButtonFlags.PressedOnClickRelease) then EnqueAcction(MMFHeader.Action.ActionC) end
+    if ui.button('C##C',vec2(20,20),ui.ButtonFlags.PressedOnClickRelease) then EnqueAcction(MMF.Action.ActionC) end
     ui.sameLine()
-    if ui.button('D##D',vec2(20,20),ui.ButtonFlags.PressedOnClickRelease) then EnqueAcction(MMFHeader.Action.ActionD) end
+    if ui.button('D##D',vec2(20,20),ui.ButtonFlags.PressedOnClickRelease) then EnqueAcction(MMF.Action.ActionD) end
 
     ui.text('Attach to')
     local attach, changed = ui.combo("##attachNode",attachto,ui.ComboFlags.HeightLargest,nodes)
     if changed then
         attachto = attach
-        config:setAndSave('GENERAL','AttachTo',attach)
+        config:set('GENERAL','AttachTo',attach)
+        config:save()
         if DDURef then DDURef:dispose() end
 
-        DDURef = Ref:findNodes(config:get('POS_'..attachto-1,'Node','COCKPIT_HR')):createNode('DDU',false):loadKN5('./model/DDU_4inch/VirtualDDU.kn5')
+        LoadModel()
 
-        angle = config:get('POS_'..attachto-1,'Rotation',vec3(0,0,0))
-        flip = config:get('POS_'..attachto-1,'Flip',false)
-        invert = config:get('POS_'..attachto-1,'Invert',false)
-        pos = config:get('POS_'..attachto-1,'Position',vec3(0,0,0))
-        look = vec3(0,0,(flip and -1 or 1))
-            :rotate(quat.fromAngleAxis(math.rad(angle.x),vec3(1,0,0)))
-            :rotate(quat.fromAngleAxis(math.rad(angle.y),vec3(0,1,0)))
-        Ref = ac.findNodes('carsRoot:yes')
-        DDURef:setPosition(pos):setOrientation(look,vec3(0,(invert and -1 or 1),0):rotate(quat.fromAngleAxis(math.rad(angle.z),vec3(0,0,1))))
     end
 
     ui.text('X:')
