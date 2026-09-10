@@ -22,10 +22,13 @@ end
 ---@field mmf table --Render MMF 本体 MMFHeaderV3 を参照
 ---@field frameTexture ui.GIFPlayer --MMFからデータを流し込む RGBフォーマットがそろわないので要変換
 ---@field displayCanvas ui.ExtraCanvas -- Simhubダッシュボードのテクスチャ 色変換済み
+---@field displayMeshes ac.SceneReference
 ---@field ledColors rgbm[]
+---@field ledMeshes ac.SceneReference
 ---@field touchMode MMF.TouchMode
 ---@field touchTraces boolean
 ---@field requestId integer -- アクションコマンドを送信するときのID
+---@field lastDisplayBrightnessess integer
 local Device = {}
 
 ---@param DeviceID string
@@ -45,11 +48,15 @@ function Device.new(DeviceID, width, height,touchMode,touchTraces)
         mmf = nil,
         frameTexture = nil,
         displayCanvas = nil,
+        displayMeshes = ac.emptySceneReference(),
         ledColors = {},
+        ledMeshes = ac.emptySceneReference(),
         touchMode = touchMode and touchMode or MMF.TouchMode.Unchanged,
         touchTraces = touchTraces and touchTraces or false,
-        requestId = 0
+        requestId = 0,
+        lastDisplayBrightnessess =0,
     }
+
 
     return setmetatable(self, { __index = Device })
 end
@@ -118,11 +125,27 @@ function Device:setTexture(size)
     if self.frameTexture or not newSize then self.frameTexture = nil end
 
     if newSize then
+        self.mmf.RequestActive = false
+        self.mmf.RequestedRenderWidthPixels = newSize.x
+        self.mmf.RequestedRenderHeightPixels = newSize.y
+        ac.log('KE-SimHubMMF: Device '..self.id..': Request Change resolution')
+
         self.frameTexture = ui.GIFPlayer({width = newSize.x, height = newSize.y})
         self.frameTexture.keepRunning = true
         self.displayCanvas = ui.ExtraCanvas(newSize,1,render.TextureFormat.R8G8B8A8.UNorm)
         self.displayCanvas:setName(self.id..'canvas')
+        
+        self.mmf.RequestActive = true
+        ac.log('KE-SimHubMMF: Device '..self.id..': Restart data request')
     end
+end
+
+function Device:setDisplayMeshes(ref)
+    self.displayMeshes:append(ref)
+end
+
+function Device:setLedMeshes(ref)
+    self.ledMeshes:append(ref)
 end
 
 function Device:updateDisplay()

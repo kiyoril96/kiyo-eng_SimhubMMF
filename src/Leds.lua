@@ -31,9 +31,21 @@ function Leds:update(device)
         or device.mmf.LedsRenderBuffer2.Buffer
 
     device.ledColors = {}
-    for i = 1,ledsCount do
-        device.ledColors[i] = rgbm.from0255(buf[i*3+0],buf[i*3+1],buf[i*3+2],1)
+    local index = 0
+    for i = 0,ledsCount-1 do
+        device.ledColors[i+1] = rgbm.from0255(buf[i*3+0],buf[i*3+1],buf[i*3+2],1)
+        device.ledMeshes:filterMeshes('?.'..string.format( "%03d", i+1 ))
+            :setMaterialTexture("txDiffuse", rgbm(0.2,0.2,0.2,0))
+            :setMaterialProperty("ksEmissive",vec3(
+                device.ledColors[i+1].r*1000
+                ,device.ledColors[i+1].g*1000
+                ,device.ledColors[i+1].b*1000
+            ))
+        index = i
     end
+
+    ac.debug('index',index)
+
 
     device.mmf.ReadCount = device.mmf.ReadCount + 1
 

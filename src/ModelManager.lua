@@ -34,17 +34,22 @@ function ModelManager:getDefinition(id)
 end
 
 ---@param modelId string --Models folder name
----@param deviceIndex? integer
 ---@param attach? string
-function ModelManager:addModel(modelId,deviceIndex,attach)
-    local deviceCount = self.modelDefinitions[modelId].instanceCount +1
-    self.modelDefinitions[modelId].instanceCount = deviceCount
+function ModelManager:addModel(modelId,attach)
     local def = self.modelDefinitions[modelId]
     local modelInstance = instance.new(def)
-    modelInstance:setDevice(deviceIndex and deviceIndex or 0)
     modelInstance:load(attach)
-    self.models[modelId..deviceCount]=modelInstance
+    self.models[#self.models+1]=modelInstance
 end
+
+
+--車ごとの設定ファイルを受け取ってモデルの読み込み、配置をやる
+--設定ファイルにはモデルを設置している位置ごとにモデルとその設定値を定義
+---@param config ac.INIConfig
+function ModelManager:setup(config)
+
+end
+
 
 -- 上手く行ってない
 function ModelManager:changeModel(modelIndex ,definition)

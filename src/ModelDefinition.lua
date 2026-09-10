@@ -10,7 +10,6 @@ local curDir = ac.getFolder(ac.FolderID.ScriptOrigin)
 ---@field DefaultDisplayHeight integer
 ---@field ledsCount integer
 ---@field ledMesh string
----@field instanceCount integer
 local ModelDefinition ={}
 
 function ModelDefinition.new(modelID)
@@ -33,7 +32,6 @@ function ModelDefinition.new(modelID)
         DefaultDisplayHeight = config:get('DISPLAY','height',180),
         ledsCount = config:get('LED','led',0),
         ledMesh = config:get('LED','mesh','LED'),
-        instanceCount = 0
     }
     ac.log('KE-SimHubMMF: ModelDefinition: Load "'.. modelID .. '" ModelDefinition')
 

@@ -44,6 +44,15 @@ function Display:update(device)
         })
         device.mmf.ReadCount = device.mmf.ReadCount + 1
         device.wasDisplayFilled = true -- レンダリングの状況確認用
+
+        if device.mmf.DisplayBrightness ~= device.lastDisplayBrightnessess then
+            local tempBrightness = device.mmf.DisplayBrightness/10
+            local brightness = vec3(tempBrightness,tempBrightness,tempBrightness)
+            device.displayMeshes
+                :ensureUniqueMaterials()
+                :setMaterialProperty("ksEmissive",brightness)
+            device.lastDisplayBrightnessess = device.mmf.DisplayBrightness
+        end
     end
     ac.debug(device.id..' Display Write Count',device.mmf.DisplayWriteCount)
 end

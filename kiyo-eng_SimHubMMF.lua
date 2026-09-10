@@ -20,7 +20,6 @@ local deviceID = 'KE-VDisp'
 local modelMnger
 
 local devMnger
-local dev
 
 function Initialize()
 
@@ -58,21 +57,20 @@ function Initialize()
     local modelid = 'DDU_4inch'
     --local modelid = 'tablet'
     modelMnger = ModelManager.new()
-    modelMnger:addModel(modelid,1)
-    modelMnger.models[modelid..1].flip = false
-    modelMnger.models[modelid..1]:setPosition(vec3(0.2,0.3,-0.2))
-    modelMnger.models[modelid..1]:setRotation(vec3(0,0,0))
+
+    modelMnger:setup(config)
+    modelMnger:addModel(modelid)
+
+    modelMnger.models[1].flip = false
+    modelMnger.models[1]:setPosition(vec3(0.2,0.3,-0.2))
+    modelMnger.models[1]:setRotation(vec3(0,0,0))
     
+    devMnger.devices[1]:setTexture()
 
-    devMnger.devices[1]:setTexture(textureSize)
+    modelMnger.models[1]:setDisplayTexture(devMnger.devices[1])
+    modelMnger.models[1]:setLedUpdater(devMnger.devices[1])
 
-    local tempBrightness = devMnger.devices[1].mmf.DisplayBrightness/10
-    local brightness = vec3(tempBrightness,tempBrightness,tempBrightness)
-    modelMnger.models[modelid..1].node:findMeshes('Display'):ensureUniqueMaterials()
-        :setMaterialTexture("txDiffuse",devMnger.devices[1].displayCanvas)
-        :setMaterialProperty("ksEmissive",brightness)
 
-    ac.debug('displaymesh',modelMnger.models[modelid..1].node:findMeshes('Display'))
     appInit = true
 end
 
@@ -91,6 +89,9 @@ end
 
 
 local modelidlistIndex = 1
+local resolutions = {vec2(160,90) ,vec2(320,180) ,vec2(160,100) , vec2(320,200) ,vec2(800,600) ,vec2( 400,640)}
+local resolutionStr = {'160x90' ,'320x180' ,'160x100' , '320x200' ,'800x600' ,' 400x640'}
+local resIndex = 1
 function WindowMain()
 
     
@@ -102,5 +103,12 @@ function WindowMain()
         modelidlistIndex = index
     end
 
+    local res, changed = ui.combo("##res",resIndex,ui.ComboFlags.HeightLargest,resolutionStr)
+    if changed then
+        
+        devMnger.devices[1]:setTexture(resolutions[res])
+        resIndex = res
+    end
 
+ac.debug('test',devMnger.devices[1].mmf.WrittenLedsCount)
 end
