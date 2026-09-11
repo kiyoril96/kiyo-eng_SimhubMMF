@@ -92,13 +92,6 @@ function ModelInstance:setDevice(device)
 end
 
 function ModelInstance:setDisplayTexture(device)
-    local tempBrightness = device.mmf.DisplayBrightness/10
-    local brightness = vec3(tempBrightness,tempBrightness,tempBrightness)
-    self.displayMesh
-        :ensureUniqueMaterials()
-        :setMaterialTexture("txDiffuse", device.displayCanvas)
-        :setMaterialProperty("ksEmissive",brightness)
-
     self.displayMesh:setAttribute('DeviceID',device.id)
     self.displayMesh:setAttribute('DeviceIndex',device.index)
     device:setDisplayMeshes(self.displayMesh)

@@ -13,6 +13,7 @@ function DeviceManager.new(deviceFamilyId)
         deviceFamilyId = deviceFamilyId ,
         indexMMFname = 'SimHubDashIndexV3' .. deviceFamilyId ,
         devices = {},
+        lastTouchDevice = -1
     }
 
     return setmetatable(self, { __index = DeviceManager })
@@ -49,6 +50,25 @@ function DeviceManager:update()
     for i = 1, #self.devices do
         self.devices[i]:update()
     end
+end
+
+function DeviceManager:checkTouchPoint(mouseClicked)
+    local targetMeshes = ac.emptySceneReference()
+    local hitsRef = ac.emptySceneReference()
+    local hitsUV =vec2()
+    for _,device in ipairs(self.devices) do
+        targetMeshes:append(device.displayMeshes)
+    end
+
+    if mouseClicked
+        and ac.getSim().cameraPosition:closerToThan(targetMeshes:getWorldTransformationRaw().position ,2) 
+        and (targetMeshes:raycast(render.createMouseRay(), hitsRef,nil,nil,hitsUV,0) ~= -1 ) then
+            self.lastTouchDevice = hitsRef:getAttribute('DeviceIndex')
+            self.devices[self.lastTouchDevice +1]:sendTouch(vec2(hitsUV.x,hitsUV.y+1),mouseClicked)
+    else
+        self.devices[self.lastTouchDevice +1]:sendTouch(vec2(0,0),mouseClicked)
+    end
+
 end
 
 return DeviceManager

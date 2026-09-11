@@ -135,6 +135,10 @@ function Device:setTexture(size)
         self.displayCanvas = ui.ExtraCanvas(newSize,1,render.TextureFormat.R8G8B8A8.UNorm)
         self.displayCanvas:setName(self.id..'canvas')
         
+        self.displayMeshes
+        :ensureUniqueMaterials()
+        :setMaterialTexture("txDiffuse", self.displayCanvas)
+
         self.mmf.RequestActive = true
         ac.log('KE-SimHubMMF: Device '..self.id..': Restart data request')
     end
@@ -142,6 +146,9 @@ end
 
 function Device:setDisplayMeshes(ref)
     self.displayMeshes:append(ref)
+    self.displayMeshes
+        :ensureUniqueMaterials()
+        :setMaterialTexture("txDiffuse", self.displayCanvas)
 end
 
 function Device:setLedMeshes(ref)
@@ -156,6 +163,9 @@ function Device:updateLeds()
     LEDs:update(self)
 end
 
+
+
+
 ---@param point vec2
 ---@param press boolean
 function Device:sendTouch(point,press)
@@ -164,8 +174,7 @@ function Device:sendTouch(point,press)
         self.mmf.Cursor4.CursorCoordinatesY = math.floor(point.y * self.height)
         self.mmf.Cursor4.CursorPressed = press
         
-        ac.debug('Device '..self.id..': Touch Point', math.floor(point.x * self.width))
-        ac.debug('Device '..self.id..': Touch Point', math.floor(point.y * self.height))
+        ac.debug('Device '..self.id..': Touch Point', {math.floor(point.x * self.width),math.floor(point.y * self.height)} )
     end
 end
 

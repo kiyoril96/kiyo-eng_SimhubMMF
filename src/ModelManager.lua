@@ -55,7 +55,6 @@ end
 function ModelManager:changeModel(modelIndex ,definition)
     local modelInstance = self.models[modelIndex]
     local oldModelId = definition.modelID
-    self.modelDefinitions[oldModelId].instanceCount = self.modelDefinitions[oldModelId].instanceCount-1
 
     modelInstance.definition = definition
     local deviceCount = definition.instanceCount +1

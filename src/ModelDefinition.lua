@@ -35,9 +35,6 @@ function ModelDefinition.new(modelID)
     }
     ac.log('KE-SimHubMMF: ModelDefinition: Load "'.. modelID .. '" ModelDefinition')
 
-    ac.debug('ModelDefinition:'..self.modelID..': Config',config)
-    ac.debug('ModelDefinition:'..self.modelID..': Definition',self)
-
     return setmetatable(self, { __index = ModelDefinition })
 end
 

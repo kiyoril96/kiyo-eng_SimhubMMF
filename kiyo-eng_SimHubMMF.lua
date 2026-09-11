@@ -40,6 +40,15 @@ function Initialize()
 
     config = ac.INIConfig.load(configPath,ac.INIFormat.Extended)
 
+    local configVersion = config:get('GENERAL','version',0)
+
+    if configVersion >= 2 then
+        --再生成
+        local defaultConfigPath = ac.getFolder(ac.FolderID.ScriptOrigin) .. '/config/default.ini'
+        local defaultConfig =  ac.INIConfig.load(defaultConfigPath,ac.INIFormat.Extended)
+        defaultConfig:save(configPath)
+    end
+
     for index, section in config:iterate('POS') do
         if section ~= 'GENERAL' then
             nodes[index] = config:get(section,'Node','COCKPIT_HR')
@@ -49,9 +58,9 @@ function Initialize()
     -- デバイス（SimhubMMFの初期化）
     devMnger = DeviceManager.new(deviceFamilyId):start()
     -- デバイスをとりあえず１台
-    devMnger:add( Device.new( deviceID,160,90,MMF.TouchMode.Unchanged ) )
+    devMnger:add( Device.new( deviceID,160,90,MMF.TouchMode.ForceLeftRight ) )
     -- ２台以降
-    --devMnger:add( Device.new( deviceID,width,height,MMF.TouchMode.Unchanged ) )
+    devMnger:add( Device.new( deviceID,320,200,MMF.TouchMode.ForceAdvanced ) )
 
     -- モデル定義の初期化
     local modelid = 'DDU_4inch'
@@ -60,15 +69,36 @@ function Initialize()
 
     modelMnger:setup(config)
     modelMnger:addModel(modelid)
+    --modelMnger:addModel('ringLed','STEER_HR')
 
     modelMnger.models[1].flip = false
-    modelMnger.models[1]:setPosition(vec3(0.2,0.3,-0.2))
+    modelMnger.models[1]:setPosition(vec3(0.2,0.25,-0.15))
     modelMnger.models[1]:setRotation(vec3(0,0,0))
     
     devMnger.devices[1]:setTexture()
 
     modelMnger.models[1]:setDisplayTexture(devMnger.devices[1])
     modelMnger.models[1]:setLedUpdater(devMnger.devices[1])
+
+    modelMnger:addModel('tablet')
+
+    modelMnger.models[2].flip = false
+    modelMnger.models[2]:setPosition(vec3(0,0.25,-0.15))
+    modelMnger.models[2]:setRotation(vec3(0,0,0))
+    
+    devMnger.devices[2]:setTexture()
+    
+    modelMnger.models[2]:setDisplayTexture(devMnger.devices[2])
+    modelMnger.models[2]:setLedUpdater(devMnger.devices[2])
+
+    modelMnger:addModel('ringLed','STEER_HR')
+
+    modelMnger.models[3].flip = false
+    modelMnger.models[3]:setPosition(vec3(0,0,0))
+    modelMnger.models[3]:setRotation(vec3(0,0,0))
+    
+    modelMnger.models[3]:setDisplayTexture(devMnger.devices[2])
+    modelMnger.models[3]:setLedUpdater(devMnger.devices[2])
 
 
     appInit = true
@@ -82,9 +112,15 @@ function SimUpdate()
 
     if appInit then
         devMnger:update()
+
+        if ac.getSim().isWindowForeground 
+            and (ui.mouseClicked(ui.MouseButton.Left) or ui.mouseReleased(ui.MouseButton.Left))
+            and not ac.getUI().wantCaptureMouse then
+            devMnger:checkTouchPoint(ui.mouseClicked(ui.MouseButton.Left))
+        end
     end
 
-    ac.debug('models',modelMnger.models)
+ac.debug('testTouch',devMnger.devices[1].mmf.Cursor4.CursorPressed )
 end
 
 
@@ -110,5 +146,4 @@ function WindowMain()
         resIndex = res
     end
 
-ac.debug('test',devMnger.devices[1].mmf.WrittenLedsCount)
 end
