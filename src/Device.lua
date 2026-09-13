@@ -147,6 +147,7 @@ function Device:setTexture(size)
         self.mmf.RequestActive = true
         ac.log('KE-SimHubMMF: Device '..self.id..': Restart data request')
 
+        -- 解像度変更後にも参照を切れないようにする
         self.displayMeshes
             :ensureUniqueMaterials()
             :setMaterialTexture("txDiffuse", self.displayCanvas)
