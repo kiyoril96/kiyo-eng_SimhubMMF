@@ -66,7 +66,7 @@ function DeviceManager:checkTouchPoint(mouseClicked)
     end
 
     if mouseClicked
-        and ac.getSim().cameraPosition:closerToThan(targetMeshes:getWorldTransformationRaw().position ,2) 
+        and ac.getSim().cameraPosition:closerToThan(targetMeshes:getWorldTransformationRaw().position ,3) 
         and (targetMeshes:raycast(render.createMouseRay(), hitsRef,nil,nil,hitsUV,0) ~= -1 ) then
             self.lastTouchDevice = hitsRef:getAttribute('DeviceIndex')
             self.devices[self.lastTouchDevice +1]:sendTouch(vec2(hitsUV.x,hitsUV.y+1),mouseClicked)

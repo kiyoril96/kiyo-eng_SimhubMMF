@@ -175,8 +175,101 @@ function DeviceList()
                     device:setTexture(devMnger.resolutions.size[res])
                     device.resolutionIndex = res
                 end
+                ui.sameLine()
+                ui.offsetCursorX(ui.availableSpaceX()-100)
+                if ui.button('Delete###'..device.id..'delete') then  end
             end)
         end
+    end
+end
+
+function ModelControllWindowClose(model)
+    modelMnger.controllerWindowOpen = false
+    modelMnger:seveTransform()
+end
+
+function ModelControllWindow(model)
+    if model then 
+        modelMnger.controllerWindowOpen = true
+        ui.popup(function()
+            if ui.button('Flip###Flip') then model:setFlip() end
+            ui.sameLine()
+            if ui.button('Invert###Invert') then model:setInvert() end
+
+            ui.text('X:')
+            ui.sameLine()
+            ui.setNextItemWidth(200)
+            local valx,changedx = ui.slider('##posX',model.points[model.attach].position.x,-2,2,'%.04f')
+            if changedx then 
+                model.points[model.attach].position.x = valx
+            end
+            if ui.itemClicked(ui.MouseButton.Right,false) then 
+                changedx =true
+                model.points[model.attach].position.x = 0
+            end
+            ui.sameLine()
+            ui.setNextItemWidth(100)
+            local valrx,changedrx = ui.slider('##rotX',model.points[model.attach].rotation.x,-90,90,'%.01f')
+            if changedrx then 
+                model.points[model.attach].rotation.x = valrx
+            end
+            if ui.itemClicked(ui.MouseButton.Right,false) then 
+                changedrx =true
+                model.points[model.attach].rotation.x = 0
+            end
+        
+            ui.text('Y:')
+            ui.sameLine()
+            ui.setNextItemWidth(200)
+            local valy,changedy = ui.slider('##posY',model.points[model.attach].position.y,-2,2,'%.04f')
+            if changedy then 
+                model.points[model.attach].position.y = valy
+            end
+            if ui.itemClicked(ui.MouseButton.Right,false) then 
+                changedy =true
+                model.points[model.attach].position.y = 0
+            end
+            ui.sameLine()
+            ui.setNextItemWidth(100)
+            local valry,changedry = ui.slider('##rotY',model.points[model.attach].rotation.y,-90,90,'%.01f')
+            if changedry then 
+                model.points[model.attach].rotation.y = valry
+            end
+            if ui.itemClicked(ui.MouseButton.Right,false) then 
+                changedry =true
+                model.points[model.attach].rotation.y = 0
+            end
+
+            ui.text('Z:')
+            ui.sameLine()
+            ui.setNextItemWidth(200)
+            local valz,changedz = ui.slider('##posZ',model.points[model.attach].position.z,-2,2,'%.04f')
+            if changedz then 
+                model.points[model.attach].position.z = valz
+            end
+            if ui.itemClicked(ui.MouseButton.Right,false) then 
+                changedz =true
+                model.points[model.attach].position.z = 0
+            end
+            ui.sameLine()
+            ui.setNextItemWidth(100)
+            local valrz,changedrz = ui.slider('##rotZ',model.points[model.attach].rotation.z,-90,90,'%.01f')
+            if changedrz then 
+                model.points[model.attach].rotation.z = valrz
+            end
+            if ui.itemClicked(ui.MouseButton.Right,false) then 
+                changedrz =true
+                model.points[model.attach].rotation.z = 0
+            end
+
+            if changedx or changedy or changedz then
+                model:setPosition()
+            end
+            if changedrx or changedry or changedrz then
+                model:setRotation()
+            end
+
+        end, {onClose=function () ModelControllWindowClose(model) end,size={initial=vec2(320,220)}})
     end
 end
 
@@ -189,9 +282,10 @@ function ModelList()
                 ui.drawTextClipped('AttachPoint: '..model.attach,vec2(10,40),vec2(200,80))
                 
                 ui.offsetCursor(vec2(ui.availableSpaceX()-100,0))
-                if ui.button('Flip###Flip'..model.definition.modelID..i) then model:setFlip() end
-                ui.sameLine()
-                if ui.button('Invert###Invert'..model.definition.modelID..i) then model:setInvert() end
+                if ui.button('Model Controler ###') then 
+                    if ModelManager.controllerWindowOpen then ui.closePopup() end
+                        ModelControllWindow(model)
+                end
 
                 ui.offsetCursor(vec2(170,0))
                 local attach, changed = ui.combo('##attach'..model.definition.modelID..i,model.attachIndex,ui.ComboFlags.NoPreview,modelMnger.nodes)
@@ -199,6 +293,9 @@ function ModelList()
                     model.attachIndex = attach
                     model:reload(modelMnger.nodes[attach])
                 end
+                ui.sameLine()
+                ui.offsetCursorX(ui.availableSpaceX()-100)
+                if ui.button('Delete###'..model.definition.modelID..i..'delete') then  end
             end)
         end
     end

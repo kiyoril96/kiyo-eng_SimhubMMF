@@ -71,9 +71,9 @@ end
 --     self.setDisplayTexture()
 -- end
 
----@param position vec3
+---@param position vec3?
 function ModelInstance:setPosition(position)
-    self.points[self.attach].position = position
+    if position ~= nil then self.points[self.attach].position = position end
     self.node:setPosition(self.points[self.attach].position)
 end
 

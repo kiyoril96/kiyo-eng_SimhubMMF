@@ -146,6 +146,10 @@ function Device:setTexture(size)
         
         self.mmf.RequestActive = true
         ac.log('KE-SimHubMMF: Device '..self.id..': Restart data request')
+
+        self.displayMeshes
+            :ensureUniqueMaterials()
+            :setMaterialTexture("txDiffuse", self.displayCanvas)
     end
 end
 

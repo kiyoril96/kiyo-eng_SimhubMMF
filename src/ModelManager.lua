@@ -9,6 +9,7 @@ local instance = require('src/ModelInstance')
 ---@field modelIdList string[]
 ---@field config ac.INIConfig
 ---@field nodes string[]
+---@field controllerWindowOpen boolean
 local ModelManager = {}
 
 function ModelManager.new()
@@ -27,7 +28,8 @@ function ModelManager.new()
         modelIdList = modelIDs,
         models = {},
         config = {},
-        nodes ={}
+        nodes ={},
+        controllerWindowOpen =false
     }
 
     return setmetatable(self, { __index = ModelManager })
@@ -74,7 +76,6 @@ function ModelManager:setup(config)
 
 end
 
-
 -- 上手く行ってない
 function ModelManager:changeModel(modelIndex ,definition)
     local modelInstance = self.models[modelIndex]
@@ -90,5 +91,11 @@ end
 function ModelManager:deleteModel(id,modelIndex)
 
 end
+
+function ModelManager:seveTransform(device)
+    --config set
+    --config save
+end
+
 
 return ModelManager
