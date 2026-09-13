@@ -6,15 +6,15 @@
 ---@field attachIndex integer
 ---@field displayMesh ac.SceneReference
 ---@field ledMeshes ac.SceneReference
+---@field points table
 ---@field deviceIndex integer
----@field flip boolean
----@field invert boolean
----@field position vec3
----@field rotation vec3
 ---@field displayBrightnessess integer
 local ModelInstance = {}
 
 function ModelInstance.new(definition)
+    local points = {}
+    points['COCKPIT_HR'] = {flip = false,invert = false,position = vec3(),rotation = vec3()}
+    points['STEER_HR'] = {flip = false,invert = false,position = vec3(),rotation = vec3()}
     local self = {
         definition = definition,
         device = nil,
@@ -23,17 +23,16 @@ function ModelInstance.new(definition)
         attachIndex = 1,
         displayMesh = ac.emptySceneReference(),
         ledMeshes = ac.emptySceneReference(),
-        -- deviceIndex = 1,
-        flip = false,
-        invert = false,
-        position = vec3(),
-        rotation = vec3(),
+        points = points,
         displayBrightnessess = 0,
     }
     return setmetatable(self, { __index = ModelInstance })
 end
 
+---@param Attach string?
 function ModelInstance:load(Attach)
+
+    if Attach ~= nil and self.attach ~= Attach then self.attach = Attach end
 
     local parent = ac.findNodes('carsRoot:yes'):findNodes(Attach and Attach or self.attach)
     local attachNode = parent:findNodes('SimHubDeviceModel')
@@ -49,8 +48,11 @@ function ModelInstance:load(Attach)
         self.ledMeshes = self.node:findMeshes(self.definition.ledMesh..'.?')
     end
 
-    self:setPosition(self.position)
-    self:setRotation(self.rotation)
+    self:setFlip(self.points[self.attach].flip)
+    self:setInvert(self.points[self.attach].invert)
+    self:setPosition(self.points[self.attach].position)
+    self:setRotation(self.points[self.attach].rotation)
+    
 
     return true
 end
@@ -61,6 +63,7 @@ function ModelInstance:reload(Attach)
     self.attach = Attach and Attach or self.attach
 
     self:load()
+    self:setDevice()
     return true
 end
 -- function ModelInstance:setDevice(deviceIndex)
@@ -68,25 +71,41 @@ end
 --     self.setDisplayTexture()
 -- end
 
-function ModelInstance:destroy() 
-    
-end
-
 ---@param position vec3
 function ModelInstance:setPosition(position)
-    self.position = position
-    self.node:setPosition(position)
+    self.points[self.attach].position = position
+    self.node:setPosition(self.points[self.attach].position)
 end
 
----@param rotation vec3
+---@param rotation vec3?
 function ModelInstance:setRotation(rotation)
-    local look = vec3(0,0,(self.flip and -1 or 1))
-        :rotate(quat.fromAngleAxis(math.rad(rotation.x),vec3(1,0,0)))
-        :rotate(quat.fromAngleAxis(math.rad(rotation.y),vec3(0,1,0)))
+    if rotation ~= nil then self.points[self.attach].rotation = rotation end
+    local look = vec3(0,0,(self.points[self.attach].flip and -1 or 1))
+        :rotate(quat.fromAngleAxis(math.rad(self.points[self.attach].rotation.x),vec3(1,0,0)))
+        :rotate(quat.fromAngleAxis(math.rad(self.points[self.attach].rotation.y),vec3(0,1,0)))
     
-    self.node:setOrientation(look,vec3(0,(self.invert and -1 or 1),0)
-        :rotate(quat.fromAngleAxis(math.rad(rotation.z),vec3(0,0,1))) )
+    self.node:setOrientation(look,vec3(0,(self.points[self.attach].invert and -1 or 1),0)
+        :rotate(quat.fromAngleAxis(math.rad(self.points[self.attach].rotation.z),vec3(0,0,1))) )
+end
 
+---@param flip boolean?
+function ModelInstance:setFlip(flip)
+    if flip == nil then
+        self.points[self.attach].flip = not self.points[self.attach].flip
+    else
+        self.points[self.attach].flip = flip
+    end
+    self:setRotation()
+end
+
+---@param invert boolean?
+function ModelInstance:setInvert(invert)
+    if invert == nil then
+        self.points[self.attach].invert = not self.points[self.attach].invert
+    else
+        self.points[self.attach].invert = invert
+    end
+    self:setRotation()
 end
 
 ---@param position? vec3
@@ -96,9 +115,9 @@ function ModelInstance:setTransform(position,rotation)
 end
 
 function ModelInstance:setDevice(device)
-    self.device = device
-    self.setDisplayTexture(device)
-    self.setLedUpdater(device)
+    if device then self.device = device end
+    self:setDisplayTexture(self.device)
+    self:setLedUpdater(self.device)
 end
 
 function ModelInstance:setDisplayTexture(device)

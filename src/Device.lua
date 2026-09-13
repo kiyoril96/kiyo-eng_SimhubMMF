@@ -144,10 +144,6 @@ function Device:setTexture(size)
         self.displayCanvas = ui.ExtraCanvas(newSize,1,render.TextureFormat.R8G8B8A8.UNorm)
         self.displayCanvas:setName(self.id..'canvas')
         
-        self.displayMeshes
-        :ensureUniqueMaterials()
-        :setMaterialTexture("txDiffuse", self.displayCanvas)
-
         self.mmf.RequestActive = true
         ac.log('KE-SimHubMMF: Device '..self.id..': Restart data request')
     end

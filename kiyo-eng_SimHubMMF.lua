@@ -11,7 +11,6 @@ local appInit = false
 local carId
 local configPath
 local config
-local nodes = {}
 
 local deviceFamilyId = '8d297eae-fc40-4229-943c-0eba7402673c'
 local deviceID = 'KE-VDisp'
@@ -48,12 +47,6 @@ function Initialize()
         defaultConfig:save(configPath)
     end
 
-    for index, section in config:iterate('POS') do
-        if section ~= 'GENERAL' then
-            nodes[index] = config:get(section,'Node','COCKPIT_HR')
-        end
-    end
-
     -- デバイス（SimhubMMFの初期化）
     devMnger = DeviceManager.new(deviceFamilyId):start()
     -- デバイスをとりあえず１台
@@ -70,35 +63,31 @@ function Initialize()
     modelMnger:addModel(modelid)
     --modelMnger:addModel('ringLed','STEER_HR')
 
-    modelMnger.models[1].flip = false
+    modelMnger.models[1]:setFlip(false)
     modelMnger.models[1]:setPosition(vec3(0.2,0.25,-0.15))
     modelMnger.models[1]:setRotation(vec3(0,0,0))
     
     devMnger.devices[1]:setTexture()
 
-    modelMnger.models[1]:setDisplayTexture(devMnger.devices[1])
-    modelMnger.models[1]:setLedUpdater(devMnger.devices[1])
-
+    modelMnger.models[1]:setDevice(devMnger.devices[1])
+    
     modelMnger:addModel('tablet')
 
-    modelMnger.models[2].flip = false
+    modelMnger.models[2]:setFlip(false)
     modelMnger.models[2]:setPosition(vec3(0,0.25,-0.15))
     modelMnger.models[2]:setRotation(vec3(0,0,0))
     
     devMnger.devices[2]:setTexture()
     
-    modelMnger.models[2]:setDisplayTexture(devMnger.devices[2])
-    modelMnger.models[2]:setLedUpdater(devMnger.devices[2])
+    modelMnger.models[2]:setDevice(devMnger.devices[2])
 
     modelMnger:addModel('ringLed','STEER_HR')
 
-    modelMnger.models[3].flip = false
+    modelMnger.models[3]:setFlip(false)
     modelMnger.models[3]:setPosition(vec3(0,0,0))
     modelMnger.models[3]:setRotation(vec3(0,0,0))
     
-    modelMnger.models[3]:setDisplayTexture(devMnger.devices[2])
-    modelMnger.models[3]:setLedUpdater(devMnger.devices[2])
-
+    modelMnger.models[3]:setDevice(devMnger.devices[2])
 
     appInit = true
 end
@@ -198,11 +187,17 @@ function ModelList()
             ui.childWindow('###'..model.definition.modelID..i,vec2(windwoSize.x,75),true, ui.WindowFlags.None, function()
                 ui.drawTextClipped('#'..i..': '..model.definition.modelID,vec2(10,10),vec2(170,30))
                 ui.drawTextClipped('AttachPoint: '..model.attach,vec2(10,40),vec2(200,80))
-                ui.offsetCursor(vec2(170,30))
-                local attach, changed = ui.combo('##attach'..model.definition.modelID..i,model.attachIndex,ui.ComboFlags.NoPreview,nodes)
+                
+                ui.offsetCursor(vec2(ui.availableSpaceX()-100,0))
+                if ui.button('Flip###Flip'..model.definition.modelID..i) then model:setFlip() end
+                ui.sameLine()
+                if ui.button('Invert###Invert'..model.definition.modelID..i) then model:setInvert() end
+
+                ui.offsetCursor(vec2(170,0))
+                local attach, changed = ui.combo('##attach'..model.definition.modelID..i,model.attachIndex,ui.ComboFlags.NoPreview,modelMnger.nodes)
                 if changed then
                     model.attachIndex = attach
-                    model:reload(nodes[attach])
+                    model:reload(modelMnger.nodes[attach])
                 end
             end)
         end

@@ -7,6 +7,8 @@ local instance = require('src/ModelInstance')
 ---@field modelDefinitions ModelDefinition[]
 ---@field models ModelInstance[]
 ---@field modelIdList string[]
+---@field config ac.INIConfig
+---@field nodes string[]
 local ModelManager = {}
 
 function ModelManager.new()
@@ -23,7 +25,9 @@ function ModelManager.new()
     local self = {
         modelDefinitions=modelDefinitions,
         modelIdList = modelIDs,
-        models = {}
+        models = {},
+        config = {},
+        nodes ={}
     }
 
     return setmetatable(self, { __index = ModelManager })
@@ -36,8 +40,20 @@ end
 ---@param modelId string --Models folder name
 ---@param attach? string
 function ModelManager:addModel(modelId,attach)
+
+    -- ん～～
+    local attachIndex = 1
+    if attach ~= nil then
+        for i,node in ipairs(self.nodes) do
+            if node == attach then
+                attachIndex = i
+            end
+        end
+    end
+
     local def = self.modelDefinitions[modelId]
     local modelInstance = instance.new(def)
+    modelInstance.attachIndex = attachIndex
     modelInstance:load(attach)
     self.models[#self.models+1]=modelInstance
 end
@@ -47,6 +63,14 @@ end
 --設定ファイルにはモデルを設置している位置ごとにモデルとその設定値を定義
 ---@param config ac.INIConfig
 function ModelManager:setup(config)
+
+    self.config = config
+
+    for index, section in config:iterate('POS') do
+        if section ~= 'GENERAL' then
+            self.nodes[index] = config:get(section,'Node','COCKPIT_HR')
+        end
+    end
 
 end
 
