@@ -29,14 +29,20 @@ end
 ---@field touchTraces boolean
 ---@field requestId integer -- アクションコマンドを送信するときのID
 ---@field lastDisplayBrightnessess integer
+---@field ledWindowOpen boolean
+---@field displayWindowOpen boolean
+---@field resolutionIndex integer
 local Device = {}
 
+-- MMF.TouchMode.Unchanged は MMF生成後に変更しても意味ない？ようなのでSimhub側から操作する想定にする
+-- ⇒ 基本はUnchangedで良い
 ---@param DeviceID string
 ---@param width integer
 ---@param height integer
 ---@param touchMode? MMF.TouchMode
 ---@param touchTraces? boolean
 function Device.new(DeviceID, width, height,touchMode,touchTraces)
+
     local self = {
         index = -1,
         id = DeviceID,
@@ -55,6 +61,9 @@ function Device.new(DeviceID, width, height,touchMode,touchTraces)
         touchTraces = touchTraces and touchTraces or false,
         requestId = 0,
         lastDisplayBrightnessess =0,
+        ledWindowOpen = false,
+        displayWindowOpen = false,
+        resolutionIndex = 1
     }
 
 

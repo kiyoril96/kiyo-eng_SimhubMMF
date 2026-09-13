@@ -3,6 +3,7 @@
 ---@field device Device
 ---@field node ac.SceneReference
 ---@field attach string
+---@field attachIndex integer
 ---@field displayMesh ac.SceneReference
 ---@field ledMeshes ac.SceneReference
 ---@field deviceIndex integer
@@ -10,7 +11,7 @@
 ---@field invert boolean
 ---@field position vec3
 ---@field rotation vec3
----@field displayBrightnessess integer  
+---@field displayBrightnessess integer
 local ModelInstance = {}
 
 function ModelInstance.new(definition)
@@ -19,6 +20,7 @@ function ModelInstance.new(definition)
         device = nil,
         node = nil,
         attach = 'COCKPIT_HR',
+        attachIndex = 1,
         displayMesh = ac.emptySceneReference(),
         ledMeshes = ac.emptySceneReference(),
         -- deviceIndex = 1,
@@ -53,6 +55,14 @@ function ModelInstance:load(Attach)
     return true
 end
 
+function ModelInstance:reload(Attach)
+
+    if self.node then self.node:dispose() end
+    self.attach = Attach and Attach or self.attach
+
+    self:load()
+    return true
+end
 -- function ModelInstance:setDevice(deviceIndex)
 --     deviceIndex = deviceIndex
 --     self.setDisplayTexture()

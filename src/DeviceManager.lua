@@ -1,11 +1,12 @@
 require('src/MMFHeader')
+local res = require('src/resolutions')
 
 ---@class DeviceManager
 ---@field deviceFamilyId string
 ---@field indexMMFname string
 ---@field devices Device[]
+---@field resolutions Resolutions
 ---@field indexMMF table
----@field deviceCounter integer
 local DeviceManager = {}
 
 function DeviceManager.new(deviceFamilyId)
@@ -13,7 +14,9 @@ function DeviceManager.new(deviceFamilyId)
         deviceFamilyId = deviceFamilyId ,
         indexMMFname = 'SimHubDashIndexV3' .. deviceFamilyId ,
         devices = {},
-        lastTouchDevice = -1
+        resolutions = res.new(),
+        lastTouchDevice = -1,
+        indexMMF = nil
     }
 
     return setmetatable(self, { __index = DeviceManager })
@@ -31,6 +34,8 @@ function DeviceManager:add(device)
         ac.log('KE-SimHubMMF: DeviceManager: Device entry is Full')
         return nil
     end
+    local size = vec2(device.width,device.height)
+    self.resolutions:add(size)
     device.index = curIndex
     device.id = ((device.id and device.id or 'KE-VirtualDisplay')..'#'..device.index +1)
     device.mmfName = 'SimHubDashRenderV3' .. self.deviceFamilyId .. '_' .. device.identifier1 .. '_' ..device.identifier2
@@ -65,8 +70,9 @@ function DeviceManager:checkTouchPoint(mouseClicked)
         and (targetMeshes:raycast(render.createMouseRay(), hitsRef,nil,nil,hitsUV,0) ~= -1 ) then
             self.lastTouchDevice = hitsRef:getAttribute('DeviceIndex')
             self.devices[self.lastTouchDevice +1]:sendTouch(vec2(hitsUV.x,hitsUV.y+1),mouseClicked)
-    else
+    elseif not mouseClicked and self.lastTouchDevice ~= -1 then
         self.devices[self.lastTouchDevice +1]:sendTouch(vec2(0,0),mouseClicked)
+        self.lastTouchDevice = -1
     end
 
 end

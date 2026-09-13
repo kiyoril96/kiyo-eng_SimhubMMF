@@ -2,7 +2,6 @@
 -- そのあと保存の方法を考える （デバイスごと？車ごと？モデルごと？）
 -- そして複数モデル・デバイス読み込みに対応する
 -- その保存方法を考える
-
 local ModelManager = require('src/ModelManager')
 local DeviceManager = require('src/DeviceManager')
 local Device = require('src/Device')
@@ -58,9 +57,9 @@ function Initialize()
     -- デバイス（SimhubMMFの初期化）
     devMnger = DeviceManager.new(deviceFamilyId):start()
     -- デバイスをとりあえず１台
-    devMnger:add( Device.new( deviceID,160,90,MMF.TouchMode.ForceLeftRight ) )
+    devMnger:add( Device.new( deviceID,160,90,MMF.TouchMode.Unchanged ) )
     -- ２台以降
-    devMnger:add( Device.new( deviceID,320,200,MMF.TouchMode.ForceAdvanced ) )
+    devMnger:add( Device.new( deviceID,320,200,MMF.TouchMode.Unchanged ) )
 
     -- モデル定義の初期化
     local modelid = 'DDU_4inch'
@@ -123,27 +122,93 @@ function SimUpdate()
 ac.debug('testTouch',devMnger.devices[1].mmf.Cursor4.CursorPressed )
 end
 
-
-local modelidlistIndex = 1
-local resolutions = {vec2(160,90) ,vec2(320,180) ,vec2(160,100) , vec2(320,200) ,vec2(800,600) ,vec2( 400,640)}
-local resolutionStr = {'160x90' ,'320x180' ,'160x100' , '320x200' ,'800x600' ,' 400x640'}
-local resIndex = 1
 function WindowMain()
 
-    
-    local index, changed = ui.combo("##model",modelidlistIndex,ui.ComboFlags.HeightLargest,modelMnger.modelIdList)
-    if changed then
-        
-        modelMnger:changeModel( modelMnger.modelIdList[modelidlistIndex]..1 
-            , modelMnger.modelDefinitions[modelMnger.modelIdList[index]] ,ui.ButtonFlags.PressedOnClickRelease)
-        modelidlistIndex = index
-    end
+    ui.tabBar('###mainWindowTab', function ()
+      ui.tabItem('Device', function () DeviceList() end )
+      ui.tabItem('Model', function () ModelList() end)
+      ui.tabItem('Settings', function () Setting() end)
+    end)
 
-    local res, changed = ui.combo("##res",resIndex,ui.ComboFlags.HeightLargest,resolutionStr)
-    if changed then
-        
-        devMnger.devices[1]:setTexture(resolutions[res])
-        resIndex = res
-    end
+end
 
+function PopOutLEDWindow(device)
+    device.ledWindowOpen = true
+    ui.popup(function() 
+        local ledSize = math.max((ui.availableSpaceX()/ #device.ledColors *0.3),3)
+        local height = 30+(ledSize * 0.7)
+        local offset = (ui.availableSpaceX()-(ledSize*2)) / (#device.ledColors) 
+        for i=1 ,#device.ledColors do
+            local p1 = vec2( (offset*i) -5 , height )
+            ui.drawCircleFilled(p1,ledSize,device.ledColors[i],20)
+            ui.drawCircle(p1,ledSize,rgbm(0,0,0,1),20,1)
+        end
+    end, {onClose=function () device.ledWindowOpen = false end,title='LED'..device.id,size={initial=vec2(20*#device.ledColors,60)},padding=vec2(0,0)})
+end
+
+function PopOutDisplayWindow(device)
+    device.displayWindowOpen = true
+    ui.popup(function() 
+        local rato = device.displayCanvas:size().y/device.displayCanvas:size().x
+        local size = vec2( ui.availableSpaceX(), ui.availableSpaceX()*rato )
+        ui.image(device.displayCanvas,size,ui.ImageFit.Stretch)
+        local cursory = ui.getCursorY() - size.y
+        if ui.itemClicked(ui.MouseButton.Left, false) then 
+            local offsetMoucepos = ui.mouseLocalPos()-vec2(0,cursory)
+            local clickedAt =  vec2( (offsetMoucepos.x/size.x), (offsetMoucepos.y/size.y))
+            Device:sendTouch(clickedAt,true)
+        end
+        if ui.itemClicked(ui.MouseButton.Left, true) then 
+            local offsetMoucepos = ui.mouseLocalPos()-vec2(0,cursory)
+            local clickedAt =  vec2( (offsetMoucepos.x/size.x), (offsetMoucepos.y/size.y))
+            Device:sendTouch(clickedAt,false)
+        end
+        ac.debug('test',ui.mouseLocalPos())
+    end, {onClose=function () device.displayWindowOpen = false end,title='Display'..device.id,size={initial=vec2(320,220)},padding=vec2(0,0)})
+end
+
+function DeviceList()
+    local windwoSize = ui.availableSpace()
+    if devMnger.devices then
+        for i,device in ipairs(devMnger.devices) do
+            ui.childWindow('###'..device.id , vec2(windwoSize.x,75), true, ui.WindowFlags.None, function()
+                --ui.drawImage(device.displayCanvas,vec2(0,0),vec2(90,70),ui.ImageFit.Fit)
+                ui.drawTextClipped(device.id,vec2(10,10),vec2(170,30))
+                ui.sameLine()
+                ui.offsetCursorX(ui.availableSpaceX()-100)
+                if ui.button('LED###'..device.id..'leds') and not device.ledWindowOpen then PopOutLEDWindow(device) end
+                ui.sameLine()
+                if ui.button('Display###'..device.id..'displays') and not device.displayWindowOpen  then PopOutDisplayWindow(device) end
+                ui.drawTextClipped('Resolution: '..device.width..'x'..device.height,vec2(10,40),vec2(200,80))
+                ui.offsetCursor(vec2(130,0))
+                local res, changed = ui.combo('##res'..device.id,device.resolutionIndex,ui.ComboFlags.NoPreview,devMnger.resolutions.strs)
+                if changed then
+                    device:setTexture(devMnger.resolutions.size[res])
+                    device.resolutionIndex = res
+                end
+            end)
+        end
+    end
+end
+
+function ModelList()
+    local windwoSize = ui.availableSpace()
+    if modelMnger.models then
+        for i,model in ipairs(modelMnger.models) do
+            ui.childWindow('###'..model.definition.modelID..i,vec2(windwoSize.x,75),true, ui.WindowFlags.None, function()
+                ui.drawTextClipped('#'..i..': '..model.definition.modelID,vec2(10,10),vec2(170,30))
+                ui.drawTextClipped('AttachPoint: '..model.attach,vec2(10,40),vec2(200,80))
+                ui.offsetCursor(vec2(170,30))
+                local attach, changed = ui.combo('##attach'..model.definition.modelID..i,model.attachIndex,ui.ComboFlags.NoPreview,nodes)
+                if changed then
+                    model.attachIndex = attach
+                    model:reload(nodes[attach])
+                end
+            end)
+        end
+    end
+end
+
+function Setting()
+    ui.text('Nothing yet.')
 end
