@@ -66,10 +66,16 @@ function ModelInstance:reload(Attach)
     self:setDevice()
     return true
 end
--- function ModelInstance:setDevice(deviceIndex)
---     deviceIndex = deviceIndex
---     self.setDisplayTexture()
--- end
+
+function ModelInstance:changeDefinition(definition)
+    if definition == nil then return end
+    self.definition = definition
+    self:reload()
+end
+
+function ModelInstance:delete()
+    if self.node then self.node:dispose() end
+end
 
 ---@param position vec3?
 function ModelInstance:setPosition(position)
@@ -108,11 +114,6 @@ function ModelInstance:setInvert(invert)
     self:setRotation()
 end
 
----@param position? vec3
----@param rotation? vec3
-function ModelInstance:setTransform(position,rotation)
-
-end
 
 function ModelInstance:setDevice(device)
     if device then self.device = device end

@@ -18,8 +18,9 @@ function ModelManager.new()
     local modelDefinitions = {}
     for i = 1,#modelIDs do
         local def = definition.new(modelIDs[i])
-        if def then 
-            modelDefinitions[modelIDs[i]] = def 
+        if def then
+            def.index = i
+            modelDefinitions[modelIDs[i]] = def
         end
     end
 
@@ -35,8 +36,19 @@ function ModelManager.new()
     return setmetatable(self, { __index = ModelManager })
 end
 
-function ModelManager:getDefinition(id)
-    return self.modelDefinitions[id]
+--車ごとの設定ファイルを受け取ってモデルの読み込み、配置をやる
+--設定ファイルにはモデルを設置している位置ごとにモデルとその設定値を定義
+---@param config ac.INIConfig
+function ModelManager:setup(config)
+
+    self.config = config
+
+    for index, section in config:iterate('POS') do
+        if section ~= 'GENERAL' then
+            self.nodes[index] = config:get(section,'Node','COCKPIT_HR')
+        end
+    end
+
 end
 
 ---@param modelId string --Models folder name
@@ -57,39 +69,15 @@ function ModelManager:addModel(modelId,attach)
     local modelInstance = instance.new(def)
     modelInstance.attachIndex = attachIndex
     modelInstance:load(attach)
-    self.models[#self.models+1]=modelInstance
+    local newIndex = #self.models+1
+    self.models[newIndex]=modelInstance
+
+    return newIndex
 end
 
-
---車ごとの設定ファイルを受け取ってモデルの読み込み、配置をやる
---設定ファイルにはモデルを設置している位置ごとにモデルとその設定値を定義
----@param config ac.INIConfig
-function ModelManager:setup(config)
-
-    self.config = config
-
-    for index, section in config:iterate('POS') do
-        if section ~= 'GENERAL' then
-            self.nodes[index] = config:get(section,'Node','COCKPIT_HR')
-        end
-    end
-
-end
-
--- 上手く行ってない
-function ModelManager:changeModel(modelIndex ,definition)
-    local modelInstance = self.models[modelIndex]
-    local oldModelId = definition.modelID
-
-    modelInstance.definition = definition
-    local deviceCount = definition.instanceCount +1
-    if modelInstance.node then modelInstance.node:dispose() end
-    modelInstance:load()
-    self.models[definition.modelID..deviceCount] = modelInstance
-end
-
-function ModelManager:deleteModel(id,modelIndex)
-
+function ModelManager:deleteModel(modelIndex)
+    self.models[modelIndex]:delete()
+    table.remove(self.models,modelIndex)
 end
 
 function ModelManager:seveTransform(device)

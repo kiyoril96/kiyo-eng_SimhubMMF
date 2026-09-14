@@ -1,5 +1,6 @@
 local Display = {}
 
+-- タイムアウトしたら黒で塗りつぶす処理を入れたい
 function Display:update(device) 
     if not device.mmf then
         return
@@ -54,7 +55,6 @@ function Display:update(device)
             device.lastDisplayBrightnessess = device.mmf.DisplayBrightness
         end
     end
-    ac.debug(device.id..' Display Write Count',device.mmf.DisplayWriteCount)
 end
 
 return Display

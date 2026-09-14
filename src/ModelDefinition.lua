@@ -23,6 +23,7 @@ function ModelDefinition.new(modelID)
     local modelName = config:get('MODEL','name','model.kn5')
 
     local self = {
+        index = -1,
         modelID = modelID,
         modelName = modelName,
         path = curDir..'/model/'..modelID..'/'..modelName,

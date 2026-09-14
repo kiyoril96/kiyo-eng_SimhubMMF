@@ -5,6 +5,7 @@ local res = require('src/resolutions')
 ---@field deviceFamilyId string
 ---@field indexMMFname string
 ---@field devices Device[]
+---@field deviceStr string[]
 ---@field resolutions Resolutions
 ---@field indexMMF table
 local DeviceManager = {}
@@ -14,6 +15,7 @@ function DeviceManager.new(deviceFamilyId)
         deviceFamilyId = deviceFamilyId ,
         indexMMFname = 'SimHubDashIndexV3' .. deviceFamilyId ,
         devices = {},
+        deviceStr = {},
         resolutions = res.new(),
         lastTouchDevice = -1,
         indexMMF = nil
@@ -42,6 +44,7 @@ function DeviceManager:add(device)
     device:start()
 
     self.devices[curIndex+1]=device
+    self.deviceStr[curIndex+1]=device.id
 
     self.indexMMF.Device[device.index].DeviceID = {device.id:byte(1,-1)}
     self.indexMMF.Device[device.index].MMFIdentifier1 = device.identifier1
@@ -50,6 +53,13 @@ function DeviceManager:add(device)
     self.indexMMF.Device[device.index].Available = true
     return true
 end
+
+function DeviceManager:remove(devicesIndex)
+    self.devices[devicesIndex]:stop()
+    table.remove(self.devices,devicesIndex)
+    table.remove(self.deviceStr,devicesIndex)
+end
+
 
 function DeviceManager:update()
     for i = 1, #self.devices do
@@ -65,7 +75,7 @@ function DeviceManager:checkTouchPoint(mouseClicked)
         targetMeshes:append(device.displayMeshes)
     end
 
-    if mouseClicked
+    if #self.devices>0 and targetMeshes:size() ~= 0 and mouseClicked
         and ac.getSim().cameraPosition:closerToThan(targetMeshes:getWorldTransformationRaw().position ,3) 
         and (targetMeshes:raycast(render.createMouseRay(), hitsRef,nil,nil,hitsUV,0) ~= -1 ) then
             self.lastTouchDevice = hitsRef:getAttribute('DeviceIndex')
@@ -74,7 +84,6 @@ function DeviceManager:checkTouchPoint(mouseClicked)
         self.devices[self.lastTouchDevice +1]:sendTouch(vec2(0,0),mouseClicked)
         self.lastTouchDevice = -1
     end
-
 end
 
 return DeviceManager

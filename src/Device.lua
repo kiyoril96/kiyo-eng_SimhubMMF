@@ -101,6 +101,7 @@ function Device:stop()
     if self.mmf then
         ac.log('KE-SimHubMMF: Device '..self.id..': Stop data request')
         self.mmf.RequestActive = false
+        self.mmf=nil
     else
         ac.log('KE-SimHubMMF: Device '..self.id..': not Available')
     end
@@ -134,18 +135,22 @@ function Device:setTexture(size)
     if self.frameTexture or not newSize then self.frameTexture = nil end
 
     if newSize then
-        self.mmf.RequestActive = false
-        self.mmf.RequestedRenderWidthPixels = newSize.x
-        self.mmf.RequestedRenderHeightPixels = newSize.y
-        ac.log('KE-SimHubMMF: Device '..self.id..': Request Change resolution')
+        
+        if self.mmf then
+            self.mmf.RequestActive = false
+            self.mmf.RequestedRenderWidthPixels = newSize.x
+            self.mmf.RequestedRenderHeightPixels = newSize.y
+            ac.log('KE-SimHubMMF: Device '..self.id..': Request Change resolution')
+        end
 
         self.frameTexture = ui.GIFPlayer({width = newSize.x, height = newSize.y})
         self.frameTexture.keepRunning = true
         self.displayCanvas = ui.ExtraCanvas(newSize,1,render.TextureFormat.R8G8B8A8.UNorm)
-        self.displayCanvas:setName(self.id..'canvas')
         
-        self.mmf.RequestActive = true
-        ac.log('KE-SimHubMMF: Device '..self.id..': Restart data request')
+        if self.mmf then
+            self.mmf.RequestActive = true
+            ac.log('KE-SimHubMMF: Device '..self.id..': Restart data request')
+        end
 
         -- 解像度変更後にも参照を切れないようにする
         self.displayMeshes
@@ -183,8 +188,6 @@ function Device:sendTouch(point,press)
         self.mmf.Cursor4.CursorCoordinatesX = math.floor(point.x * self.width)
         self.mmf.Cursor4.CursorCoordinatesY = math.floor(point.y * self.height)
         self.mmf.Cursor4.CursorPressed = press
-        
-        ac.debug('Device '..self.id..': Touch Point', {math.floor(point.x * self.width),math.floor(point.y * self.height)} )
     end
 end
 

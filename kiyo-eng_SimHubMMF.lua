@@ -1,7 +1,7 @@
--- とりあえずモデルとデバイスを１個読み込んでSimhubを表示することろまで作る
--- そのあと保存の方法を考える （デバイスごと？車ごと？モデルごと？）
--- そして複数モデル・デバイス読み込みに対応する
--- その保存方法を考える
+-- クルマ・モデル・取付位置の単位でセクションを持ったコンフィグの定義
+-- モデル操作ポップアップが閉じた瞬間にコンフィグを保存するように（そのほかは操作した瞬間）
+-- 起動時の読み込み ⇒ 保存したコンフィグからデバイス・モデル情報を復元（デバイス情報はどこに保存するか）
+
 local ModelManager = require('src/ModelManager')
 local DeviceManager = require('src/DeviceManager')
 local Device = require('src/Device')
@@ -98,7 +98,7 @@ function SimUpdate()
         Initialize()
     end
 
-    if appInit then
+    if appInit and #devMnger.devices~=0 then
         devMnger:update()
 
         if ac.getSim().isWindowForeground 
@@ -107,8 +107,6 @@ function SimUpdate()
             devMnger:checkTouchPoint(ui.mouseClicked(ui.MouseButton.Left))
         end
     end
-
-ac.debug('testTouch',devMnger.devices[1].mmf.Cursor4.CursorPressed )
 end
 
 function WindowMain()
@@ -135,6 +133,7 @@ function PopOutLEDWindow(device)
     end, {onClose=function () device.ledWindowOpen = false end,title='LED'..device.id,size={initial=vec2(20*#device.ledColors,60)},padding=vec2(0,0)})
 end
 
+-- なぜか？タッチできない
 function PopOutDisplayWindow(device)
     device.displayWindowOpen = true
     ui.popup(function() 
@@ -152,7 +151,6 @@ function PopOutDisplayWindow(device)
             local clickedAt =  vec2( (offsetMoucepos.x/size.x), (offsetMoucepos.y/size.y))
             Device:sendTouch(clickedAt,false)
         end
-        ac.debug('test',ui.mouseLocalPos())
     end, {onClose=function () device.displayWindowOpen = false end,title='Display'..device.id,size={initial=vec2(320,220)},padding=vec2(0,0)})
 end
 
@@ -160,25 +158,36 @@ function DeviceList()
     local windwoSize = ui.availableSpace()
     if devMnger.devices then
         for i,device in ipairs(devMnger.devices) do
-            ui.childWindow('###'..device.id , vec2(windwoSize.x,75), true, ui.WindowFlags.None, function()
+            ui.childWindow('###'..device.id , vec2(windwoSize.x,40), true, ui.WindowFlags.NoScrollbar, function()
                 --ui.drawImage(device.displayCanvas,vec2(0,0),vec2(90,70),ui.ImageFit.Fit)
                 ui.drawTextClipped(device.id,vec2(10,10),vec2(170,30))
+                ui.drawTextClipped('Resolution: '..device.width..'x'..device.height,vec2(100,10),vec2(300,30))
                 ui.sameLine()
-                ui.offsetCursorX(ui.availableSpaceX()-100)
-                if ui.button('LED###'..device.id..'leds') and not device.ledWindowOpen then PopOutLEDWindow(device) end
-                ui.sameLine()
-                if ui.button('Display###'..device.id..'displays') and not device.displayWindowOpen  then PopOutDisplayWindow(device) end
-                ui.drawTextClipped('Resolution: '..device.width..'x'..device.height,vec2(10,40),vec2(200,80))
-                ui.offsetCursor(vec2(130,0))
-                local res, changed = ui.combo('##res'..device.id,device.resolutionIndex,ui.ComboFlags.NoPreview,devMnger.resolutions.strs)
+                ui.offsetCursor(vec2(230,0))
+                local res, changed = ui.combo('##res'..device.id..i,device.resolutionIndex,ui.ComboFlags.NoPreview,devMnger.resolutions.strs)
                 if changed then
                     device:setTexture(devMnger.resolutions.size[res])
                     device.resolutionIndex = res
                 end
                 ui.sameLine()
-                ui.offsetCursorX(ui.availableSpaceX()-100)
-                if ui.button('Delete###'..device.id..'delete') then  end
+                ui.offsetCursorX(ui.availableSpaceX()-160)
+                if ui.button('LED###'..device.id..'leds'..i) and not device.ledWindowOpen then PopOutLEDWindow(device) end
+                ui.sameLine()
+                if ui.button('Display###'..device.id..'displays'..i) and not device.displayWindowOpen  then PopOutDisplayWindow(device) end
+
+                ui.sameLine()
+                if ui.button('Delete###'..device.id..'delete') then 
+                    devMnger:remove(i)
+                end
             end)
+        end
+        ui.offsetCursor(vec2((ui.availableSpaceX()/2)-50,20))
+        if #devMnger.devices < 10 then 
+            if ui.button('Add###addModel',vec2(100,30)) then 
+                local newDevice = Device.new(deviceID,160,90,MMF.TouchMode.Unchanged)
+                newDevice:setTexture(vec2(160,90))
+                devMnger:add(newDevice)
+            end
         end
     end
 end
@@ -192,6 +201,8 @@ function ModelControllWindow(model)
     if model then 
         modelMnger.controllerWindowOpen = true
         ui.popup(function()
+
+            ui.offsetCursorX(ui.availableSpaceX()-100)
             if ui.button('Flip###Flip') then model:setFlip() end
             ui.sameLine()
             if ui.button('Invert###Invert') then model:setInvert() end
@@ -277,26 +288,50 @@ function ModelList()
     local windwoSize = ui.availableSpace()
     if modelMnger.models then
         for i,model in ipairs(modelMnger.models) do
-            ui.childWindow('###'..model.definition.modelID..i,vec2(windwoSize.x,75),true, ui.WindowFlags.None, function()
-                ui.drawTextClipped('#'..i..': '..model.definition.modelID,vec2(10,10),vec2(170,30))
-                ui.drawTextClipped('AttachPoint: '..model.attach,vec2(10,40),vec2(200,80))
-                
-                ui.offsetCursor(vec2(ui.availableSpaceX()-100,0))
-                if ui.button('Model Controler ###') then 
-                    if ModelManager.controllerWindowOpen then ui.closePopup() end
+            ui.childWindow('###'..model.definition.modelID..i,vec2(windwoSize.x,75),true, ui.WindowFlags.NoScrollbar, function()
+                ui.drawTextClipped('#'..i..': ',vec2(10,10),vec2(170,30))
+                ui.drawTextClipped(model.definition.modelID,vec2(40,10),vec2(200,80))
+                ui.offsetCursor(vec2(130,0))
+                local modelIdIndex, changed = ui.combo('##modeldef'..model.definition.modelID..i,model.definition.index,ui.ComboFlags.NoPreview,modelMnger.modelIdList)
+                if changed then
+                    model.definition.index = modelIdIndex
+                    model:changeDefinition(modelMnger.modelDefinitions[modelMnger.modelIdList[modelIdIndex]] )
+                end
+                ui.sameLine()
+                ui.drawTextClipped('Device: '..model.device.id,vec2(200,10),vec2(350,80))
+                ui.offsetCursor(vec2(160,0))
+                local device, changed = ui.combo('##device'..model.definition.modelID..i,model.device.index+1,ui.ComboFlags.NoPreview,devMnger.deviceStr)
+                if changed then
+                    model:setDevice(devMnger.devices[device])
+                    model:reload()
+                end
+
+                ui.offsetCursor(vec2(ui.availableSpaceX()-70,-20))
+                if ui.button('Controler###') then 
+                    if modelMnger.controllerWindowOpen then ui.closePopup() end
                         ModelControllWindow(model)
                 end
 
-                ui.offsetCursor(vec2(170,0))
+                ui.drawTextClipped('Attach: '..model.attach,vec2(10,40),vec2(200,80))
+                ui.offsetCursor(vec2(130,0))
                 local attach, changed = ui.combo('##attach'..model.definition.modelID..i,model.attachIndex,ui.ComboFlags.NoPreview,modelMnger.nodes)
                 if changed then
                     model.attachIndex = attach
                     model:reload(modelMnger.nodes[attach])
                 end
                 ui.sameLine()
-                ui.offsetCursorX(ui.availableSpaceX()-100)
-                if ui.button('Delete###'..model.definition.modelID..i..'delete') then  end
+                ui.offsetCursorX(ui.availableSpaceX()-70)
+                if ui.button('  Delete  ###'..model.definition.modelID..i..'delete') then 
+                    modelMnger:deleteModel(i)
+                end
             end)
+        end
+        ui.offsetCursor(vec2((ui.availableSpaceX()/2)-50,20))
+        if #devMnger.devices > 0 then 
+            if ui.button('Add###addModel',vec2(100,30)) then 
+                local newIndex = modelMnger:addModel(modelMnger.modelIdList[1])
+                modelMnger.models[newIndex]:setDevice(devMnger.devices[1])
+            end
         end
     end
 end
