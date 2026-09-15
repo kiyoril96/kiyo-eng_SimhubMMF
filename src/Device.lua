@@ -32,6 +32,7 @@ end
 ---@field ledWindowOpen boolean
 ---@field displayWindowOpen boolean
 ---@field resolutionIndex integer
+---@field config ac.INIConfig
 local Device = {}
 
 -- MMF.TouchMode.Unchanged は MMF生成後に変更しても意味ない？ようなのでSimhub側から操作する想定にする
@@ -63,7 +64,8 @@ function Device.new(DeviceID, width, height,touchMode,touchTraces)
         lastDisplayBrightnessess =0,
         ledWindowOpen = false,
         displayWindowOpen = false,
-        resolutionIndex = 1
+        resolutionIndex = 1,
+        config =nil
     }
 
 
@@ -131,8 +133,8 @@ function Device:setTexture(size)
     local newSize = nil
     if self.width ~= 0 or self.height ~= 0 then newSize = vec2(self.width,self.height) end
 
-    if self.displayCanvas or not newSize then self.displayCanvas:dispose() end
-    if self.frameTexture or not newSize then self.frameTexture = nil end
+    if self.displayCanvas ~= nil  and newSize  ~= nil then self.displayCanvas:dispose() end
+    if self.frameTexture ~= nil and newSize  ~= nil then self.frameTexture = nil end
 
     if newSize then
         
@@ -157,6 +159,8 @@ function Device:setTexture(size)
             :ensureUniqueMaterials()
             :setMaterialTexture("txDiffuse", self.displayCanvas)
     end
+
+    self:setAndSave()
 end
 
 function Device:setDisplayMeshes(ref)
@@ -177,8 +181,6 @@ end
 function Device:updateLeds()
     LEDs:update(self)
 end
-
-
 
 
 ---@param point vec2
@@ -210,6 +212,13 @@ function Device:enqueAcction(Action)
                 return
             end
         end
+    end
+end
+
+function Device:setAndSave()
+    if self.config then
+    self.config:set('DEVICE_'..(self.index),'Resolution',vec2(self.width,self.height))
+    self.config:save()
     end
 end
 

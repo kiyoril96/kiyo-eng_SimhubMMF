@@ -15,7 +15,10 @@ end
 function Resolutions:checkRes(res)
     local ret = false
     for _,val in ipairs(self.size) do
-        if val == res then ret = true end 
+        if val == res then 
+            ret = true 
+            break
+        end 
     end
     return ret
 end
@@ -24,8 +27,8 @@ end
 function Resolutions:add(res)
     local string = res.x..'x'..res.y
     if not self:checkRes(res) then
-        self.size.append(res)
-        self.strs.appned(string)
+        self.size[#self.size+1]=res
+        self.strs[#self.strs+1]=string
     end
 end
 

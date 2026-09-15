@@ -4,7 +4,6 @@
 
 local ModelManager = require('src/ModelManager')
 local DeviceManager = require('src/DeviceManager')
-local Device = require('src/Device')
 
 local appInit = false
 
@@ -13,7 +12,6 @@ local configPath
 local config
 
 local deviceFamilyId = '8d297eae-fc40-4229-943c-0eba7402673c'
-local deviceID = 'KE-VDisp'
 
 local modelMnger
 
@@ -38,56 +36,24 @@ function Initialize()
 
     config = ac.INIConfig.load(configPath,ac.INIFormat.Extended)
 
-    local configVersion = config:get('GENERAL','version',0)
+    local configVersion = config:get('GENERAL','Version',0)
 
-    if configVersion >= 2 then
+    if configVersion < 2 then
         --再生成
+        config=nil
         local defaultConfigPath = ac.getFolder(ac.FolderID.ScriptOrigin) .. '/config/default.ini'
         local defaultConfig =  ac.INIConfig.load(defaultConfigPath,ac.INIFormat.Extended)
         defaultConfig:save(configPath)
     end
 
+    config = ac.INIConfig.load(configPath,ac.INIFormat.Extended)
+
     -- デバイス（SimhubMMFの初期化）
     devMnger = DeviceManager.new(deviceFamilyId):start()
-    -- デバイスをとりあえず１台
-    devMnger:add( Device.new( deviceID,160,90,MMF.TouchMode.Unchanged ) )
-    -- ２台以降
-    devMnger:add( Device.new( deviceID,320,200,MMF.TouchMode.Unchanged ) )
+    devMnger:setup(config)
 
-    -- モデル定義の初期化
-    local modelid = 'DDU_4inch'
-    --local modelid = 'tablet'
     modelMnger = ModelManager.new()
-
-    modelMnger:setup(config)
-    modelMnger:addModel(modelid)
-    --modelMnger:addModel('ringLed','STEER_HR')
-
-    modelMnger.models[1]:setFlip(false)
-    modelMnger.models[1]:setPosition(vec3(0.2,0.25,-0.15))
-    modelMnger.models[1]:setRotation(vec3(0,0,0))
-    
-    devMnger.devices[1]:setTexture()
-
-    modelMnger.models[1]:setDevice(devMnger.devices[1])
-    
-    modelMnger:addModel('tablet')
-
-    modelMnger.models[2]:setFlip(false)
-    modelMnger.models[2]:setPosition(vec3(0,0.25,-0.15))
-    modelMnger.models[2]:setRotation(vec3(0,0,0))
-    
-    devMnger.devices[2]:setTexture()
-    
-    modelMnger.models[2]:setDevice(devMnger.devices[2])
-
-    modelMnger:addModel('ringLed','STEER_HR')
-
-    modelMnger.models[3]:setFlip(false)
-    modelMnger.models[3]:setPosition(vec3(0,0,0))
-    modelMnger.models[3]:setRotation(vec3(0,0,0))
-    
-    modelMnger.models[3]:setDevice(devMnger.devices[2])
+    modelMnger:setup(config,devMnger)
 
     appInit = true
 end
@@ -144,12 +110,12 @@ function PopOutDisplayWindow(device)
         if ui.itemClicked(ui.MouseButton.Left, false) then 
             local offsetMoucepos = ui.mouseLocalPos()-vec2(0,cursory)
             local clickedAt =  vec2( (offsetMoucepos.x/size.x), (offsetMoucepos.y/size.y))
-            Device:sendTouch(clickedAt,true)
+            device:sendTouch(clickedAt,true)
         end
         if ui.itemClicked(ui.MouseButton.Left, true) then 
             local offsetMoucepos = ui.mouseLocalPos()-vec2(0,cursory)
             local clickedAt =  vec2( (offsetMoucepos.x/size.x), (offsetMoucepos.y/size.y))
-            Device:sendTouch(clickedAt,false)
+            device:sendTouch(clickedAt,false)
         end
     end, {onClose=function () device.displayWindowOpen = false end,title='Display'..device.id,size={initial=vec2(320,220)},padding=vec2(0,0)})
 end
@@ -184,9 +150,7 @@ function DeviceList()
         ui.offsetCursor(vec2((ui.availableSpaceX()/2)-50,20))
         if #devMnger.devices < 10 then 
             if ui.button('Add###addModel',vec2(100,30)) then 
-                local newDevice = Device.new(deviceID,160,90,MMF.TouchMode.Unchanged)
-                newDevice:setTexture(vec2(160,90))
-                devMnger:add(newDevice)
+                devMnger:add(160,90)
             end
         end
     end
@@ -194,7 +158,7 @@ end
 
 function ModelControllWindowClose(model)
     modelMnger.controllerWindowOpen = false
-    modelMnger:seveTransform()
+    model:setAndSave()
 end
 
 function ModelControllWindow(model)

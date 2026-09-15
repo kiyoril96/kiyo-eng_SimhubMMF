@@ -1,4 +1,5 @@
 ---@class ModelInstance
+---@field index integer
 ---@field definition ModelDefinition
 ---@field device Device
 ---@field node ac.SceneReference
@@ -9,6 +10,7 @@
 ---@field points table
 ---@field deviceIndex integer
 ---@field displayBrightnessess integer
+---@field config ac.INIConfig
 local ModelInstance = {}
 
 function ModelInstance.new(definition)
@@ -16,6 +18,7 @@ function ModelInstance.new(definition)
     points['COCKPIT_HR'] = {flip = false,invert = false,position = vec3(),rotation = vec3()}
     points['STEER_HR'] = {flip = false,invert = false,position = vec3(),rotation = vec3()}
     local self = {
+        index = -1,
         definition = definition,
         device = nil,
         node = nil,
@@ -25,6 +28,7 @@ function ModelInstance.new(definition)
         ledMeshes = ac.emptySceneReference(),
         points = points,
         displayBrightnessess = 0,
+        config = nil
     }
     return setmetatable(self, { __index = ModelInstance })
 end
@@ -53,7 +57,7 @@ function ModelInstance:load(Attach)
     self:setPosition(self.points[self.attach].position)
     self:setRotation(self.points[self.attach].rotation)
     
-
+    self:setAndSave()
     return true
 end
 
@@ -114,7 +118,6 @@ function ModelInstance:setInvert(invert)
     self:setRotation()
 end
 
-
 function ModelInstance:setDevice(device)
     if device then self.device = device end
     self:setDisplayTexture(self.device)
@@ -140,9 +143,21 @@ function ModelInstance:updateDisplayBrightness(device)
     end
 end
 
-
 function ModelInstance:setLedUpdater(device)
     device:setLedMeshes( self.ledMeshes)
+end
+
+function ModelInstance:setAndSave()
+    if self.config then
+    self.config:set('MODEL_'..(self.index-1),'Model',self.definition.modelID)
+    self.config:set('MODEL_'..(self.index-1),'Node',self.attach)
+    self.config:set('MODEL_'..(self.index-1),'Device',self.device.index+1)
+    self.config:set('MODEL_'..(self.index-1),self.attach..'.Position',self.points[self.attach].position)
+    self.config:set('MODEL_'..(self.index-1),self.attach..'.Rotation',self.points[self.attach].rotation)
+    self.config:set('MODEL_'..(self.index-1),self.attach..'.Flip',self.points[self.attach].flip)
+    self.config:set('MODEL_'..(self.index-1),self.attach..'.Invert',self.points[self.attach].invert)
+    self.config:save()
+    end
 end
 
 return ModelInstance
