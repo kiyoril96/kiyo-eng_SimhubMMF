@@ -42,6 +42,7 @@ function DeviceManager:add(width,height)
     local newWidth = width and width or 160
     local newHeight = height and height or 90
     local newDevice = Device.new('KE-VDisp',newWidth,newHeight,MMF.TouchMode.Unchanged)
+    newDevice:setTexture(vec2(width,height))
 
     local curIndex = #self.devices
     if curIndex >= 10 then
@@ -50,13 +51,14 @@ function DeviceManager:add(width,height)
     end
 
     local size = vec2(newDevice.width,newDevice.height)
-    self.resolutions:add(size)
+    local retIndex = self.resolutions:add(size)
+    newDevice.resolutionIndex = retIndex and retIndex or 1
     newDevice.index = curIndex
     newDevice.id = ((newDevice.id and newDevice.id or 'KE-VirtualDisplay')..'#'..newDevice.index +1)
     newDevice.mmfName = 'SimHubDashRenderV3' .. self.deviceFamilyId .. '_' .. newDevice.identifier1 .. '_' ..newDevice.identifier2
     newDevice.config = self.config
     newDevice:start()
-    newDevice:setTexture(vec2(width,height))
+    
 
     self.devices[curIndex+1]=newDevice
     self.deviceStr[curIndex+1]=newDevice.id
@@ -66,7 +68,6 @@ function DeviceManager:add(width,height)
     self.indexMMF.Device[newDevice.index].MMFIdentifier2 = newDevice.identifier2
     self.indexMMF.Device[newDevice.index].DeviceInfo = {(''):byte(1,-1)}
     self.indexMMF.Device[newDevice.index].Available = true
-    self:setAndSave()
     return true
 end
 
@@ -80,7 +81,6 @@ function DeviceManager:setup(config)
     for index, section in self.config:iterate('DEVICE') do
         if index > 10 then return end
         local size = self.config:get(section,'Resolution',vec2(0,0))
-        ac.log(size)
         self:add(size.x,size.y)
     end
 end
@@ -89,7 +89,6 @@ function DeviceManager:remove(devicesIndex)
     self.devices[devicesIndex]:stop()
     table.remove(self.devices,devicesIndex)
     table.remove(self.deviceStr,devicesIndex)
-    self:setAndSave()
 end
 
 

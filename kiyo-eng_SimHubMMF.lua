@@ -99,7 +99,6 @@ function PopOutLEDWindow(device)
     end, {onClose=function () device.ledWindowOpen = false end,title='LED'..device.id,size={initial=vec2(20*#device.ledColors,60)},padding=vec2(0,0)})
 end
 
--- なぜか？タッチできない
 function PopOutDisplayWindow(device)
     device.displayWindowOpen = true
     ui.popup(function() 
@@ -124,7 +123,7 @@ function DeviceList()
     local windwoSize = ui.availableSpace()
     if devMnger.devices then
         for i,device in ipairs(devMnger.devices) do
-            ui.childWindow('###'..device.id , vec2(windwoSize.x,40), true, ui.WindowFlags.NoScrollbar, function()
+            ui.childWindow('###'..device.id..i , vec2(windwoSize.x,40), true, ui.WindowFlags.NoScrollbar, function()
                 --ui.drawImage(device.displayCanvas,vec2(0,0),vec2(90,70),ui.ImageFit.Fit)
                 ui.drawTextClipped(device.id,vec2(10,10),vec2(170,30))
                 ui.drawTextClipped('Resolution: '..device.width..'x'..device.height,vec2(100,10),vec2(300,30))
@@ -134,6 +133,7 @@ function DeviceList()
                 if changed then
                     device:setTexture(devMnger.resolutions.size[res])
                     device.resolutionIndex = res
+                    device:setAndSave()
                 end
                 ui.sameLine()
                 ui.offsetCursorX(ui.availableSpaceX()-160)
@@ -142,8 +142,9 @@ function DeviceList()
                 if ui.button('Display###'..device.id..'displays'..i) and not device.displayWindowOpen  then PopOutDisplayWindow(device) end
 
                 ui.sameLine()
-                if ui.button('Delete###'..device.id..'delete') then 
+                if ui.button('Delete###'..device.id..'delete'..i) then 
                     devMnger:remove(i)
+                    devMnger:setAndSave()
                 end
             end)
         end
@@ -151,6 +152,7 @@ function DeviceList()
         if #devMnger.devices < 10 then 
             if ui.button('Add###addModel',vec2(100,30)) then 
                 devMnger:add(160,90)
+                devMnger:setAndSave()
             end
         end
     end
@@ -253,6 +255,9 @@ function ModelList()
     if modelMnger.models then
         for i,model in ipairs(modelMnger.models) do
             ui.childWindow('###'..model.definition.modelID..i,vec2(windwoSize.x,75),true, ui.WindowFlags.NoScrollbar, function()
+
+                local anyChange = false
+
                 ui.drawTextClipped('#'..i..': ',vec2(10,10),vec2(170,30))
                 ui.drawTextClipped(model.definition.modelID,vec2(40,10),vec2(200,80))
                 ui.offsetCursor(vec2(130,0))
@@ -260,6 +265,7 @@ function ModelList()
                 if changed then
                     model.definition.index = modelIdIndex
                     model:changeDefinition(modelMnger.modelDefinitions[modelMnger.modelIdList[modelIdIndex]] )
+                    anyChange = true
                 end
                 ui.sameLine()
                 ui.drawTextClipped('Device: '..model.device.id,vec2(200,10),vec2(350,80))
@@ -268,6 +274,7 @@ function ModelList()
                 if changed then
                     model:setDevice(devMnger.devices[device])
                     model:reload()
+                    anyChange = true
                 end
 
                 ui.offsetCursor(vec2(ui.availableSpaceX()-70,-20))
@@ -282,12 +289,17 @@ function ModelList()
                 if changed then
                     model.attachIndex = attach
                     model:reload(modelMnger.nodes[attach])
+                    anyChange = true
                 end
                 ui.sameLine()
                 ui.offsetCursorX(ui.availableSpaceX()-70)
                 if ui.button('  Delete  ###'..model.definition.modelID..i..'delete') then 
                     modelMnger:deleteModel(i)
+                    modelMnger:setAndSave()
                 end
+
+                if anyChange then model:setAndSave() end
+
             end)
         end
         ui.offsetCursor(vec2((ui.availableSpaceX()/2)-50,20))
@@ -295,6 +307,7 @@ function ModelList()
             if ui.button('Add###addModel',vec2(100,30)) then 
                 local newIndex = modelMnger:addModel(modelMnger.modelIdList[1])
                 modelMnger.models[newIndex]:setDevice(devMnger.devices[1])
+                modelMnger:setAndSave()
             end
         end
     end

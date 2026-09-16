@@ -13,10 +13,10 @@ end
 
 ---@param res vec2
 function Resolutions:checkRes(res)
-    local ret = false
-    for _,val in ipairs(self.size) do
+    local ret = nil
+    for i,val in ipairs(self.size) do
         if val == res then 
-            ret = true 
+            ret = i 
             break
         end 
     end
@@ -25,11 +25,17 @@ end
 
 ---@param res vec2
 function Resolutions:add(res)
+    local ret = nil
     local string = res.x..'x'..res.y
-    if not self:checkRes(res) then
-        self.size[#self.size+1]=res
-        self.strs[#self.strs+1]=string
+    local existIndex = self:checkRes(res)
+    ret = existIndex
+    if existIndex == nil then
+        local newindex = #self.size+1
+        self.size[newindex]=res
+        self.strs[newindex]=string
+        ret = newindex
     end
+    return ret
 end
 
 return Resolutions

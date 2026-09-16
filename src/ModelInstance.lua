@@ -56,8 +56,7 @@ function ModelInstance:load(Attach)
     self:setInvert(self.points[self.attach].invert)
     self:setPosition(self.points[self.attach].position)
     self:setRotation(self.points[self.attach].rotation)
-    
-    self:setAndSave()
+
     return true
 end
 

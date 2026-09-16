@@ -159,8 +159,6 @@ function Device:setTexture(size)
             :ensureUniqueMaterials()
             :setMaterialTexture("txDiffuse", self.displayCanvas)
     end
-
-    self:setAndSave()
 end
 
 function Device:setDisplayMeshes(ref)

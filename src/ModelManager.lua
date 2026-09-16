@@ -59,14 +59,12 @@ function ModelManager:addModel(modelId,attach)
     modelInstance.index = newIndex
     self.models[newIndex]=modelInstance
 
-    self:setAndSave()
     return newIndex
 end
 
 function ModelManager:deleteModel(modelIndex)
     self.models[modelIndex]:delete()
     table.remove(self.models,modelIndex)
-    self:setAndSave()
 end
 
 --車ごとの設定ファイルを受け取ってモデルの読み込み、配置をやる
@@ -80,8 +78,13 @@ function ModelManager:setup(config,deviceManager)
     self.nodes=self.config:get('GENERAL','Nodes',{'COCKPIT_HR','STEER_HR'})
 
     for _, section in self.config:iterate('MODEL') do
+
+        -- デバイスが１個もないかつモデルの定義があるならデバイスを１つだけ用意する
+        if #deviceManager.devices == 0 then deviceManager:add(160,90) end
+        
         local newIndex = self:addModel(self.config:get(section,'Model','DDU_4inch'),self.config:get(section,'Node','COCKPIT_HR'))
-        self.models[newIndex]:setDevice(deviceManager.devices[self.config:get(section,'Device',1)])
+        local targetDevice = deviceManager.devices[self.config:get(section,'Device',1)]
+        if targetDevice then self.models[newIndex]:setDevice(targetDevice) else self.models[newIndex]:setDevice(deviceManager.devices[1])  end
         for _ ,value in ipairs(self.nodes) do
             local keyPrefix = value..'.'
             self.models[newIndex].points[value].position = self.config:get(section,keyPrefix..'Position',vec3(0,0,0))
