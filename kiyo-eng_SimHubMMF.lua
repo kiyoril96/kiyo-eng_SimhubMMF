@@ -1,7 +1,3 @@
--- クルマ・モデル・取付位置の単位でセクションを持ったコンフィグの定義
--- モデル操作ポップアップが閉じた瞬間にコンフィグを保存するように（そのほかは操作した瞬間）
--- 起動時の読み込み ⇒ 保存したコンフィグからデバイス・モデル情報を復元（デバイス情報はどこに保存するか）
-
 local ModelManager = require('src/ModelManager')
 local DeviceManager = require('src/DeviceManager')
 
